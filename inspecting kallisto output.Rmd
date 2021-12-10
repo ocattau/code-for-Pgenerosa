@@ -47,12 +47,8 @@ is.na(pgenerosa_sorted)
 pgenerosa_na_removed<-pgenerosa_sorted[complete.cases(pgenerosa_sorted), ]
 #make file smaller before exporting later 
 ```
-
+#clean up data by removing counts < 10
 ```{r}
-attach(pgenerosa_cleaned)
-vector<-numeric(length=length(pgenerosa_cleaned$est_counts))
-for (i in seq_along(pgenerosa_cleaned$est_counts)) {
-  vector[i] <- pgenerosa_cleaned$est_counts[i] >=10
-}
-head(vector)
+pgenerosa_scrubbed<-subset(pgenerosa_na_removed, est_counts >=10)
+write.table(pgenerosa_scrubbed, file="/Users/oliviacattau/Documents/GitHub/code/pgenerosa_larvae_cleaned.tsv")
 ```
