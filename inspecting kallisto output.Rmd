@@ -50,5 +50,5 @@ pgenerosa_na_removed<-pgenerosa_sorted[complete.cases(pgenerosa_sorted), ]
 #clean up data by removing counts < 10
 ```{r}
 pgenerosa_scrubbed<-subset(pgenerosa_na_removed, est_counts >=10)
-write.table(pgenerosa_scrubbed, file="/Users/oliviacattau/Documents/GitHub/code/pgenerosa_larvae_cleaned.tsv")
+write.table(pgenerosa_scrubbed, file="/Users/oliviacattau/Documents/GitHub/code/pgenerosa_larvae_cleaned.tab")
 ```
