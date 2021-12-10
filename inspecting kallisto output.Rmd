@@ -46,8 +46,6 @@ pgenerosa_sorted<-pgenerosa_cleaned[order(pgenerosa_cleaned$est_counts, na.last=
 is.na(pgenerosa_sorted)
 pgenerosa_na_removed<-pgenerosa_sorted[complete.cases(pgenerosa_sorted), ]
 #make file smaller before exporting later 
-#tpm=Transcripts Per Kilobase Million
-write.csv(generosa_proteins, file = "")
 ```
 
 ```{r}
