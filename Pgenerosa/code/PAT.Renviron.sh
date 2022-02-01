@@ -1,2 +1,3 @@
 GITHUB_TOKEN="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"
+Github_token_2="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"
 Gannet: tN.2xo~yOD
