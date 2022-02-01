@@ -1,0 +1,54 @@
+---
+title: "Blasting pgenerosa"
+author: "Olivia Cattau"
+date: "11/3/2021"
+output: html_document
+---
+# Download stand alone blast, if on Mox you can skip to "Get a Query Sequence"
+
+```{bash}
+bldir = "/Users/oliviacattau/Documents/analysis/ncbi-blast-2.12.0+/bin/"
+!{bldir}blastx -h
+```
+
+# Create a Blast database
+
+```{bash}
+!curl \
+ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz \
+> /Users/oliviacattau/Documents/analysis/uniprot_sprot.fasta.gz
+!gunzip -k /Users/oliviacattau/Documents/analysis/uniprot_sprot.fasta.gz
+```
+
+# appeninding version number to database
+
+```{bash}
+!{bldir}makeblastdb \
+-in /Users/oliviacattau/Documents/analysis/uniprot_sprot.fasta \
+-dbtype prot \
+-out /Users/oliviacattau/Documents/analysis/uniprot_sprot_r2021_06
+```
+
+# Get a Query sequence from kallisto index
+```{bash}
+!head /Users/oliviacattau/Documents/data/Panopea-generosa-v1.0.fa
+!grep -c ">" Panopea-generosa-v1.0.fa
+```
+
+# This file only has 18 scaffolds, seems small....
+```{bash}
+!{bldir}blastx \
+-query /Users/oliviacattau/Documents/data/Panopea-generosa-v1.0.fa \
+-db /Users/oliviacattau/Documents/analysis/uniprot_sprot_r2021_06  \
+-out /Users/oliviacattau/Documents/analysis/Panopea-generosa-uniprot_blastx.tab \
+-evalue 1E-20 \
+-num_threads 29 \
+-max_target_seqs 1 \
+-outfmt 6
+```
+
+```{bash}
+!head /Users/oliviacattau/Documents/analysis/Panopea-generosa-uniprot_blastx.tab
+#how many blast hits?
+!wc -l /Users/oliviacattau/Documents/analysis/Panopea-generosa-uniprot_blastx.tab
+```
