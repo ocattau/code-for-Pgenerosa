@@ -6,11 +6,12 @@ output: html_document
 ---
 
 ```{r}
-countMatrix<-read.table(file="https://gannet.fish.washington.edu/gigas/analyses/output_01/abundance.tsv", header=TRUE)
+countMatrix<-read.table(file="https://gannet.fish.washington.edu/gigas/analyses/juv-Trueseq-stranded-mRNA-libraries-NR019/abundance.tsv", header=TRUE)
 head(countMatrix)
 ```
 
 ```{r}
+#do this only once
 blast_data<-read.table(file="https://gannet.fish.washington.edu/gigas/Panopea-generosa-uniprot_blastx.tab")
 names(blast_data)[1]<-"target_id" #renamed to match countMATRIX data
 names(blast_data)[2]<-"identifiers" #renamed to search in swiss prot 
@@ -28,11 +29,11 @@ generosa_counts$identifiers<-sub("\\.\\d+$", "", generosa_counts$identifiers)
 cols_to_check = 2
 print (generosa_counts[cols_to_check])
 identifiers_only<-as.data.frame(generosa_counts[2])
-write.csv(identifiers_only, file="/Users/oliviacattau/Documents/analysis/code/pgenerosa/Pgenerosa/identifiers_for_uniprot_go_terms.csv")
+write.csv(identifiers_only, file="/Users/oliviacattau/Documents/analysis/code/pgenerosa/Pgenerosa/NR019_1.csv")
 ```
 # Go to Uniprot website and grab all go terms
 ```{r}
-#loaded into gannet and pulled down
+#loaded into gannet and pulled down, do this only once
 uniprot_all_reviewed<-read.csv(file="https://gannet.fish.washington.edu/gigas/uniprot-reviewed_yes.tab", sep='\t', header=TRUE)
 ```
 
@@ -40,21 +41,22 @@ uniprot_all_reviewed<-read.csv(file="https://gannet.fish.washington.edu/gigas/un
 ```{r}
 names(uniprot_all_reviewed)[1]<-"identifiers" #renamed
 pgenerosa_proteins<-full_join(generosa_counts, uniprot_all_reviewed, by ="identifiers")
-pgenerosa_cleaned<-pgenerosa_proteins[-c(3:12)] #removed unlabeled columns 
+#pgenerosa_cleaned<-pgenerosa_proteins[-c(3:12)] #removed unlabeled columns 
 #sort by est_counts, remove na's
-pgenerosa_sorted<-pgenerosa_cleaned[order(pgenerosa_cleaned$est_counts, na.last=TRUE, decreasing=TRUE),]
+pgenerosa_sorted<-pgenerosa_proteins[order(pgenerosa_proteins$est_counts, na.last=TRUE, decreasing=TRUE),]
 is.na(pgenerosa_sorted)
 pgenerosa_na_removed<-pgenerosa_sorted[complete.cases(pgenerosa_sorted), ]
 #make file smaller before exporting later 
 ```
 #clean up data by removing counts < 10
 ```{r}
-pgenerosa_scrubbed<-subset(pgenerosa_na_removed, est_counts >=10)
-write.table(pgenerosa_scrubbed, file="/Users/oliviacattau/Documents/GitHub/code/pgenerosa_larvae_cleaned.tab")
+pgenerosa_scrubbed<-subset(pgenerosa_na_removed, pgenerosa_na_removed$est_counts >=10)
+write.table(pgenerosa_scrubbed, file="/Users/oliviacattau/Documents/GitHub/code/pgenerosa_NR019_1.tab")
 ```
 #push to Gannet
-```{r}
-rsync -avP /Users/oliviacattau/Documents/GitHub/code/pgenerosa_larvae_cleaned.tab ocattau@gannet.fish.washington.edu:/volume2/web/gigas/data
+```{r} 
+#use command line for this step
+rsync -avP /Users/oliviacattau/Documents/GitHub/code/pgenerosa_NR019_1.tab ocattau@gannet.fish.washington.edu:/volume2/web/gigas/data/p.generosa/
 ```
 
 
