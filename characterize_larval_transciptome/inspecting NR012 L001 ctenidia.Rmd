@@ -57,8 +57,7 @@ write.table(pgenerosa_scrubbed, file="/Users/oliviacattau/Documents/GitHub/code/
 #push to Gannet
 ```{r} 
 #use command line for this step
-rsync -avP /Users/oliviacattau/Documents/GitHub/code/characterize_larval_transciptome/inspecting NR012 L001 ctenidia.Rmd #grad directly from file on Github desktop
-ocattau@gannet.fish.washington.edu:/volume2/web/gigas/data/p.generosa/
+rsync -avP /Users/oliviacattau/Documents/GitHub/code/characterize_larval_transciptome/inspecting_NR012_L001_ctenidia.tab ocattau@gannet.fish.washington.edu:/volume2/web/gigas/data/p.generosa/
 ```
 
 
