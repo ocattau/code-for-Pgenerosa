@@ -58,6 +58,7 @@ write.table(pgenerosa_scrubbed, file="/Users/oliviacattau/Documents/GitHub/code/
 ```{r} 
 #use command line for this step
 rsync -avP /Users/oliviacattau/Documents/GitHub/code/pgenerosa_NR012_1_ctenidia.tab ocattau@gannet.fish.washington.edu:/volume2/web/gigas/data/p.generosa/
+  
 ```
 
 
