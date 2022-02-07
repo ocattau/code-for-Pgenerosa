@@ -34,6 +34,8 @@ write.csv(identifiers_only, file="/Users/oliviacattau/Documents/analysis/code/pg
 ```
 ## Go to Uniprot website and grab all go terms
 ```{r}
+#download data from UNIPROT website
+[link to Uniprot website](https://www.uniprot.org/uniprot/?query=*&fil=reviewed%3Ayes) 
 #loaded into gannet and pulled down
 uniprot_all_reviewed<-read.csv(file="https://gannet.fish.washington.edu/gigas/uniprot-reviewed_yes.tab", sep='\t', header=TRUE)
 ```
