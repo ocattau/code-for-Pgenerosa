@@ -12,6 +12,7 @@ head(countMatrix)
 ```
 
 ```{r}
+#load blast data, see blasting .sh file to see code (in GItHub)
 blast_data<-read.table(file="https://gannet.fish.washington.edu/gigas/Panopea-generosa-uniprot_blastx.tab")
 names(blast_data)[1]<-"target_id" #renamed to match countMATRIX data
 names(blast_data)[2]<-"identifiers" #renamed to search in swiss prot 
@@ -32,23 +33,61 @@ identifiers_only<-as.data.frame(generosa_counts[2])
 write.csv(identifiers_only, file="/Users/oliviacattau/Documents/analysis/code/pgenerosa/Pgenerosa/identifiers_for_uniprot_go_terms.csv")
 ```
 # Go to Uniprot website and grab all go terms
+[Uniprot Website](https://www.uniprot.org/uniprot/?query=*&fil=reviewed%3Ayes#)
 ```{r}
 #loaded into gannet and pulled down
 uniprot_all_reviewed<-read.csv(file="https://gannet.fish.washington.edu/gigas/uniprot-reviewed_yes.tab", sep='\t', header=TRUE)
+uniprot_all_unreviewed<-""
 ```
 
 # How to join tables by identifiers 
 ```{r}
 names(uniprot_all_reviewed)[1]<-"identifiers" #renamed
 pgenerosa_proteins<-full_join(generosa_counts, uniprot_all_reviewed, by ="identifiers")
-pgenerosa_cleaned<-pgenerosa_proteins[-c(3:12)] #removed unlabeled columns 
-#sort by est_counts, remove na's
-pgenerosa_sorted<-pgenerosa_cleaned[order(pgenerosa_cleaned$est_counts, na.last=TRUE, decreasing=TRUE),]
-is.na(pgenerosa_sorted)
-pgenerosa_na_removed<-pgenerosa_sorted[complete.cases(pgenerosa_sorted), ]
+pgenerosa_heart<-pgenerosa_proteins %>% count(heart)
+heart_na<-max(pgenerosa_heart$n)
+pgenerosa_gonad<-pgenerosa_proteins %>% count(gonad)
+gonad_na<-max(pgenerosa_gonad$n)
+pgenerosa_ctenidia<-pgenerosa_proteins %>% count(ctenidia)
+ctenidia_na<-max(pgenerosa_ctenidia$n)
+pgenerosa_larvae<-pgenerosa_proteins %>% count(larvae)
+larvae_na<-max(pgenerosa_larvae$n)
+pgenerosa_juv_amb<-pgenerosa_proteins %>% count(juv_amb)
+juv_amb_na<-max(pgenerosa_juv_amb$n)
+pgenerosa_juv_sl<-pgenerosa_proteins %>% count(juv_sl) #not sure what this is, maybe low OA exposure?
+juv_sl_na<-max(pgenerosa_juv_sl$n)
+#from table results
+all<-length(pgenerosa_proteins$target_id)
+heart_na<-(heart_na/all)*100
+gonad_na<-(gonad_na/all)*100
+ctenidia_na<-(ctenidia_na/all)*100
+larvae_na<-(larvae_na/all)*100
+juv_amb_na<-(juv_amb_na/all)*100
+juv_sl_na<-(juv_sl_na/all)*100
+na_expression<-matrix(c(heart_na, gonad_na, ctenidia_na, larvae_na, juv_amb_na, juv_sl_na), ncol=1, nrow=6, byrow=TRUE)
+rownames(na_expression)<-c("% na heart", "% na gonad", "% na ctenidia", "% na larvae", "% na juv amb", "% na juv sl")
+na_expressed<-as.data.frame(na_expression)
+write.csv(na_expressed, file="/Users/oliviacattau/Documents/GitHub/code/characterize_larval_transciptome/percent_na_expressed_2_8_2022.tab")
+```
+# filter by tissue type 
+```{r}
+pgenerosa_proteins
+pgenerosa_sorted<-pgenerosa_proteins[order(pgenerosa_proteins$heart, na.last=TRUE, decreasing=TRUE),]
+is.na(pgenerosa_proteins)
+pgenerosa_complete_cases<-pgenerosa_proteins[complete.cases(pgenerosa_proteins), ]
+all_complete_cases<-length(pgenerosa_complete_cases$target_id)
+error_of_identification<-(all_complete_cases/all)*100 #3.72% error in identifying the protein expressed
+#############################################
+pgenerosa_heart<-pgenerosa_proteins[-c(4:8)]
+pgenerosa_sorted_heart<-pgenerosa_heart[order(pgenerosa_proteins$heart, na.last=TRUE, decreasing=TRUE),]
+pgenerosa_heart_removed_na<-subset(pgenerosa_heart, heart > 0)
+total_genes<-length(pgenerosa_heart_removed_na$heart)
+heart_identifiers_na<-(sum(is.na(pgenerosa_heart_removed_na$identifiers)))
+error_
+total_identifiers<-length(pgenerosa_heart_removed_na$identifiers)
 #make file smaller before exporting later 
 #tpm=Transcripts Per Kilobase Million
-write.csv(generosa_proteins, file = "")
+write.csv(pgenerosa_proteins, file = "")
 ```
 
 ```{r}
