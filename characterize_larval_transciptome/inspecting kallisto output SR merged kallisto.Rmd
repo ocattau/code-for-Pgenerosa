@@ -23,40 +23,36 @@ library(dplyr)
 library(tidyr)
 #merging target_ids to count Matrix to get identifies for swissprot
 generosa_counts<-full_join(blast_data, countMatrix, by = "target_id")
+generosa_counts2<-left_join(blast_data, countMatrix, by = "target_id")
 generosa_counts<-generosa_counts[-c(3:12)] # not every target ID has a protein identifier...could be an issue later on....
-generosa_counts[complete.cases(generosa_counts),] 
-#blast_data<-read.csv(file="/Users/oliviacattau/Documents/analysis/code/generosa_counts.csv")#lost count data due to excel stupidity
+#generosa_counts[complete.cases(generosa_counts),] for now keep all NAs
 generosa_counts$identifiers<-sub("\\.\\d+$", "", generosa_counts$identifiers) #removed decimal after identifiers so match Uniprot format
-cols_to_check = 2
-print (generosa_counts[cols_to_check])
-identifiers_only<-as.data.frame(generosa_counts[2])
-write.csv(identifiers_only, file="/Users/oliviacattau/Documents/analysis/code/pgenerosa/Pgenerosa/identifiers_for_uniprot_go_terms.csv")
 ```
 # Go to Uniprot website and grab all go terms
 [Uniprot Website](https://www.uniprot.org/uniprot/?query=*&fil=reviewed%3Ayes#)
 ```{r}
 #loaded into gannet and pulled down
 uniprot_all_reviewed<-read.csv(file="https://gannet.fish.washington.edu/gigas/uniprot-reviewed_yes.tab", sep='\t', header=TRUE)
-uniprot_all_unreviewed<-""
+#uniprot_all_unreviewed<-""
 ```
 
 # How to join tables by identifiers 
 ```{r}
 names(uniprot_all_reviewed)[1]<-"identifiers" #renamed
 pgenerosa_proteins<-full_join(generosa_counts, uniprot_all_reviewed, by ="identifiers")
-pgenerosa_heart<-pgenerosa_proteins %>% count(heart)
-heart_na<-max(pgenerosa_heart$n)
+pgenerosa_heart<-pgenerosa_proteins %>% count(heart) #makes a table so you can see how many reads have 0 tpm, make a proportion
+heart_zero<-max(pgenerosa_heart$n)
 pgenerosa_gonad<-pgenerosa_proteins %>% count(gonad)
-gonad_na<-max(pgenerosa_gonad$n)
+gonad_zero<-max(pgenerosa_gonad$n)
 pgenerosa_ctenidia<-pgenerosa_proteins %>% count(ctenidia)
-ctenidia_na<-max(pgenerosa_ctenidia$n)
+ctenidia_zero<-max(pgenerosa_ctenidia$n)
 pgenerosa_larvae<-pgenerosa_proteins %>% count(larvae)
-larvae_na<-max(pgenerosa_larvae$n)
+larvae_zero<-max(pgenerosa_larvae$n)
 pgenerosa_juv_amb<-pgenerosa_proteins %>% count(juv_amb)
-juv_amb_na<-max(pgenerosa_juv_amb$n)
+juv_amb_zero<-max(pgenerosa_juv_amb$n)
 pgenerosa_juv_sl<-pgenerosa_proteins %>% count(juv_sl) #not sure what this is, maybe low OA exposure?
-juv_sl_na<-max(pgenerosa_juv_sl$n)
-#from table results
+juv_sl_zero<-max(pgenerosa_juv_sl$n)
+#proportion of zero reads to all reads 
 all<-length(pgenerosa_proteins$target_id)
 heart_na<-(heart_na/all)*100
 gonad_na<-(gonad_na/all)*100
@@ -72,19 +68,24 @@ write.csv(na_expressed, file="/Users/oliviacattau/Documents/GitHub/code/characte
 # filter by tissue type 
 ```{r}
 pgenerosa_proteins
-pgenerosa_sorted<-pgenerosa_proteins[order(pgenerosa_proteins$heart, na.last=TRUE, decreasing=TRUE),]
-is.na(pgenerosa_proteins)
-pgenerosa_complete_cases<-pgenerosa_proteins[complete.cases(pgenerosa_proteins), ]
-all_complete_cases<-length(pgenerosa_complete_cases$target_id)
-error_of_identification<-(all_complete_cases/all)*100 #3.72% error in identifying the protein expressed
+total_identifiers<-length(pgenerosa_proteins$identifiers) #length of unsorted data
+pgenerosa_sorted<-pgenerosa_proteins[!is.na(pgenerosa_proteins$target_id),] #sort by NA and remove
+total_IDs<-length(pgenerosa_sorted$target_id) #length of all real Target_ID data
+pgenerosa_sorted2<-pgenerosa_sorted[!is.na(pgenerosa_sorted$identifiers),] #does the same thing as complete cases
+pgenerosa_complete_cases<-pgenerosa_proteins[complete.cases(pgenerosa_proteins), ]#removes all NAs in the matrix
+all_complete_cases<-length(pgenerosa_complete_cases$target_id) #robust data set with Goterms and Target-Ids
+error_of_identification<-(all_complete_cases/total_IDs)*100 #5.2% success in identifying the protein expressed
 #############################################
-pgenerosa_heart<-pgenerosa_proteins[-c(4:8)]
-pgenerosa_sorted_heart<-pgenerosa_heart[order(pgenerosa_proteins$heart, na.last=TRUE, decreasing=TRUE),]
+#HeartData
+pgenerosa_heart<-pgenerosa_sorted[-c(4:8)]
+pgenerosa_heart<-pgenerosa_heart[order(pgenerosa_proteins$heart, na.last=TRUE, decreasing=TRUE),]
 pgenerosa_heart_removed_na<-subset(pgenerosa_heart, heart > 0)
 total_genes<-length(pgenerosa_heart_removed_na$heart)
 heart_identifiers_na<-(sum(is.na(pgenerosa_heart_removed_na$identifiers)))
-error_
-total_identifiers<-length(pgenerosa_heart_removed_na$identifiers)
+heart_expressed<-(1-(heart_identifiers_na/total_genes))*100 #7.67% coding proteins have no identity 
+
+############################################
+
 #make file smaller before exporting later 
 #tpm=Transcripts Per Kilobase Million
 write.csv(pgenerosa_proteins, file = "")
