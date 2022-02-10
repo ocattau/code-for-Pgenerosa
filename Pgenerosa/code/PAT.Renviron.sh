@@ -1,4 +1,0 @@
-GITHUB_TOKEN="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"
-Github_token_2="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"
-#token 3="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"
-Gannet: tN.2xo~yOD
