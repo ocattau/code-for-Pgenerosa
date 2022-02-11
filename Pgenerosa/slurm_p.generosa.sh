@@ -1,6 +1,6 @@
 #!/bin/bash
-## 10.29.21 blast p.generosa on MOX
-#SBATCH --job-name=blasting_p.generosa_10.29.21
+## 02.10.22 blast p.generosa on MOX
+#SBATCH --job-name=blasting_p.generosa_02.10.22
 ## Allocation Definition
 #SBATCH --account=srlab
 #SBATCH --partition=srlab
