@@ -13,7 +13,7 @@ head(countMatrix)
 
 ```{r}
 #load blast data, see blasting .sh file to see code (in GitHub)
-blast_data<-read.table(file="https://gannet.fish.washington.edu/gigas/Panopea-generosa-uniprot_blastx.tab")
+blast_data<-read.table(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Panopea-generosa-uniprot_blastx.tab")
 names(blast_data)[1]<-"target_id" #renamed to match countMATRIX data
 names(blast_data)[2]<-"identifiers" #renamed to search in swiss prot 
 ```
@@ -21,9 +21,11 @@ names(blast_data)[2]<-"identifiers" #renamed to search in swiss prot
 ```{r}
 library(dplyr)
 library(tidyr)
+library(tidyverse)
 #merging target_ids to count Matrix to get identifies for swissprot
-generosa_counts<full_join(blast_data, countMatrix, by = "target_id")
-generosa_counts<-generosa_counts[-c(3:12)] # not every target ID has a protein identifier...could be an issue later on....
+generosa_counts<-left_join(countMatrix, blast_data, by = "target_id", all=TRUE)
+generosa_counts<-generosa_counts %>% relocate(identifiers, .after = target_id)
+generosa_counts<-generosa_counts[-c(9:18)] # not every target ID has a protein identifier...could be an issue later on....
 #generosa_counts[complete.cases(generosa_counts),] for now keep all NAs
 generosa_counts$identifiers<-sub("\\.\\d+$", "", generosa_counts$identifiers) #removed decimal after identifiers so match Uniprot format
 ```
@@ -39,7 +41,7 @@ uniprot_all_reviewed<-read.csv(file="https://gannet.fish.washington.edu/gigas/un
 ```{r}
 names(uniprot_all_reviewed)[1]<-"identifiers" #renamed
 pgenerosa_proteins<-left_join(generosa_counts, uniprot_all_reviewed, by ="identifiers")
-write.csv(pgenerosa_proteins, file="/Users/oliviacattau/Documents/GitHub/code/characterize_larval_transciptome/pgenerosa_proteins_2_10_2022.tab")
+write.csv(pgenerosa_proteins, file="/Users/oliviacattau/Documents/GitHub/code/characterize_larval_transciptome/pgenerosa_proteins_2_14_2022.tab")
 ```
 # filter by tissue type 
 ```{r}
@@ -89,6 +91,26 @@ pgenerosa_heart<-pgenerosa_heart[order(pgenerosa_heart$heart, pgenerosa_heart$id
 ##### Gonad Data
 pgenerosa_gonad<-pgenerosa_proteins[-c(3,5:8)]
 pgenerosa_gonad<-pgenerosa_gonad[order(pgenerosa_proteins$heart, na.last=TRUE, decreasing=TRUE),]
+
+##### Ctenidia
+pgenerosa_ctenidia<-pgenerosa_proteins[-c(3,4,6:8)]
+pgenerosa_ctenidia<-pgenerosa_ctenidia[order(pgenerosa_proteins$ctenidia, na.last=TRUE, decreasing=TRUE),]
+
+##### Juvenile @ Ambient Conditions
+juv_amb<-pgenerosa_proteins[-c(3:5,7,8)]
+juv_amb<-juv_amb[order(pgenerosa_proteins$juv_amb, na.last=TRUE, decreasing=TRUE),]
+
+##### Juvenile @ Slightly OA conditions
+juv_sl<-pgenerosa_proteins[-c(3:6,8)]
+juv_sl<-juv_sl[order(pgenerosa_proteins$juv_sl, na.last=TRUE, decreasing=TRUE),]
+
+##### Larvae 
+pgenerosa_larvae<-pgenerosa_proteins[-c(3:7)]
+#pgenerosa_larvae<-pgenerosa_larvae[order(pgenerosa_proteins$larvae, decreasing = TRUE)]
+```
+
+```{r}
+
 ```
 
 ```{r}
