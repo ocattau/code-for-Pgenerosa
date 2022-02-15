@@ -77,7 +77,7 @@ pgenerosa_proteins
 total_identifiers<-length(pgenerosa_proteins$identifiers) #length of unsorted data
 total_IDs<-length(pgenerosa_proteins$target_id) #length of all real Target_ID data
 pgenerosa_complete_cases<-pgenerosa_proteins[complete.cases(pgenerosa_proteins), ]#removes all NAs in the matrix
-all_complete_cases<-length(pgenerosa_complete_cases$target_id) #robust data set with Goterms and Target-Ids
+all_complete_cases<-length(pgenerosa_complete_cases$target_id) #robust data set with GoTerms and Target-Ids
 error_of_identification<-(all_complete_cases/total_IDs)*100 #5.2% success in identifying the protein expressed
 ```
 
