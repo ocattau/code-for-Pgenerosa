@@ -83,18 +83,34 @@ error_of_identification<-(all_complete_cases/total_IDs)*100 #5.2% success in ide
 
 # Further Data manipulation
 ```{r}
+library(dbplyr)
 ###### Heart Data
 pgenerosa_heart<-pgenerosa_proteins[-c(4:8)]
 pgenerosa_heart<-pgenerosa_heart[order(pgenerosa_heart$heart, pgenerosa_heart$identifiers, na.last=TRUE, decreasing=TRUE),]
 #get data
+pgenerosa_heart<-subset(pgenerosa_heart, pgenerosa_heart$heart >0)
+quantiles_heart<-as.data.frame(summarise(pgenerosa_heart, quantile=quantile(heart)))
+print(quantiles_heart[4,1])
+x<-22.13962
+heart_q4<-subset(pgenerosa_heart, pgenerosa_heart$heart > x)
 
 ##### Gonad Data
 pgenerosa_gonad<-pgenerosa_proteins[-c(3,5:8)]
 pgenerosa_gonad<-pgenerosa_gonad[order(pgenerosa_proteins$heart, na.last=TRUE, decreasing=TRUE),]
+pgenerosa_gonad<-subset(pgenerosa_gonad, pgenerosa_gonad$gonad >0)
+quantiles_gonad<-as.data.frame(summarise(pgenerosa_gonad, quantile=quantile(gonad)))
+print(quantiles_gonad[4,1])
+x<-69.8115
+gonad_q4<-subset(pgenerosa_gonad, pgenerosa_gonad$gonad > x)
 
 ##### Ctenidia
 pgenerosa_ctenidia<-pgenerosa_proteins[-c(3,4,6:8)]
 pgenerosa_ctenidia<-pgenerosa_ctenidia[order(pgenerosa_proteins$ctenidia, na.last=TRUE, decreasing=TRUE),]
+pgenerosa_ctenidia<-subset(pgenerosa_ctenidia, pgenerosa_ctenidia$ctenidia >0)
+quantiles_ctenidia<-as.data.frame(summarise(pgenerosa_ctenidia, quantile=quantile(ctenidia)))
+print(quantiles_ctenidia[4,1])
+x<-2
+ctenidia_q4<-subset(pgenerosa_ctenidia, pgenerosa_ctenidia$ctenidia > x)
 
 ##### Juvenile @ Ambient Conditions
 juv_amb<-pgenerosa_proteins[-c(3:5,7,8)]
@@ -107,9 +123,17 @@ juv_sl<-juv_sl[order(pgenerosa_proteins$juv_sl, na.last=TRUE, decreasing=TRUE),]
 ##### Larvae 
 pgenerosa_larvae<-pgenerosa_proteins[-c(3:7)]
 #pgenerosa_larvae<-pgenerosa_larvae[order(pgenerosa_proteins$larvae, decreasing = TRUE)]
+
 ```
 
+#Find overlapping Data and make new data.frame
 ```{r}
+library(dplyr)
+multi_merge<-(merge(heart_q4, gonad_q4, by="identifiers"))
+heart_q4
+gonad_q4
+
+
 
 ```
 
