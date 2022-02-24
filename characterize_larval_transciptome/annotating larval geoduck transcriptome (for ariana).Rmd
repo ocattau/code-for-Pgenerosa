@@ -1,0 +1,30 @@
+---
+title: "annotating larval geoduck transcriptome (for ariana)"
+author: "Olivia Cattau"
+date: "2/24/2022"
+output: pdf_document
+---
+#load count data from kallisto output(s)
+```{r}
+countMatrix<-read.table(file="https://raw.githubusercontent.com/sr320/nb-2022/main/P_generosa/analyses/kallisto-0207.isoform.counts.matrix", header=TRUE, sep = '\t')
+names(countMatrix)[1]<-"target_id"
+head(countMatrix)
+```
+
+#use binary data to make Venn Diagram
+```{r}
+library(tidyverse)
+library(dbplyr)
+simple_data<-countMatrix
+long_data<- reshape(data=simple_data, idvar="target_id", varying=c("heart", "gonad", "ctenidia", "juv_sl", "juv_amb", "larvae"), v.name=c("tpm"), times=c("heart", "gonad", "ctenidia", "juv_sl", "juv_amb", "larvae"), new.row.names=1:8183754, direction="long")
+names(long_data)[2]<-"tissue"
+summary(long_data)
+long_data$binary=ifelse(long_data$tpm > 0, 1, 0)
+long_data_zeros<-long_data[apply(long_data, 1, function(row) all(row !=0)),]
+df<-long_data_zeros[-c(3,4)]
+table_no_zeros<-as.data.frame(crossprod(table(df)))
+write.csv(table_no_zeros, file="/Users/oliviacattau/Documents/GitHub/code/characterize_larval_transciptome/pgenerosa_table_no_zeros.tab")
+simple_data_cleaned<-simple_data[apply(simple_data, 1, function(row) all(row !=0)),]
+genelist<-long_data_zeros %>% group_by(tissue)
+genelist%>% summarise("total reads (n)"=sum(binary),  "mean tpm" = mean(tpm), "Q4 tpm" = quantile(tpm, c(0.75)))
+```
