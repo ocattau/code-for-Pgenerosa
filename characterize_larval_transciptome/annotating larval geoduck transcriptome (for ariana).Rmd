@@ -27,10 +27,10 @@ table_no_zeros<-as.data.frame(crossprod(table(df)))
 simple_data_cleaned<-simple_data[apply(simple_data, 1, function(row) all(row !=0)),]
 genelist<-long_data_zeros %>% group_by(tissue)
 output<-genelist %>% summarise("total reads (n)"=sum(binary),  "mean tpm" = mean(tpm), "Q4 tpm" = quantile(tpm, c(0.75)))
-write.csv(output, file="/Users/oliviacattau/Documents/GitHub/code/characterize_larval_transciptome/genelist_02_24_22.tab")
+#write.csv(output, file="/Users/oliviacattau/Documents/GitHub/code/characterize_larval_transciptome/genelist_02_24_22.tab")
 ```
 
-#AH's tidy alternative approach: 
+#Make UpSet plot for visualization of overlapping data: 
 ```{r}
 library(devtools)
 install_github("jokergoo/ComplexHeatmap")
@@ -52,13 +52,22 @@ tidy_data$c=ifelse(tidy_data$ctenidia > 0, 1, 0)
 tidy_data$l=ifelse(tidy_data$larvae > 0, 1, 0)
 tidy_data$ja=ifelse(tidy_data$juv_amb > 0, 1, 0)
 tidy_data$jsl=ifelse(tidy_data$juv_sl > 0, 1, 0)
-
-#make upset plot, not working right now, need to debug code
+#####
+#make upset plot, need to install above code to work 
 m1 = make_comb_mat(heart=tidy_data$heart, gonad=tidy_data$gonad, ctenidia=tidy_data$ctenidia, juv_amb=tidy_data$juv_amb, juv_sl=tidy_data$juv_sl, larvae=tidy_data$larvae) 
 set_size(m1)
-p1<-UpSet(m1 [comb_degree(m1)<=2], column_title = ="name") #intersections 2 or less
-p2<-UpSet(m1 [comb_degree(m1)>=3]) #intersections 3 or more
+p1<-UpSet(m1 [comb_degree(m1)<=2], column_title ="All intersections of 2 or less") #intersections 2 or less
+p2<-UpSet(m1 [comb_degree(m1)>=3], column_title= "All intersection of 3 or more") #intersections 3 or more
 p3<-UpSet(m1, pt_size = unit(2, "mm")) #everything
+p4<-UpSet(m1, top_annotation = HeatmapAnnotation(
+    degree = as.character(comb_degree(m1)),
+    "Intersection\nsize" = anno_barplot(comb_size(m1), 
+        border = FALSE, 
+        gp = gpar(fill = "black"), 
+        height = unit(2, "cm")
+    ), 
+    annotation_name_side = "left", 
+    annotation_name_rot = 0), column_title="p. generosa transcriptome distinct intersections")
 #remove all rows with zeros, creates dataframe with all overlapping genes
 all_overlapping_genes<-tidy_data[apply(tidy_data, 1, function(row) all(row !=0)),]
 #####
@@ -77,6 +86,30 @@ genelist<-tidy_data_long_no_zeros %>%
   group_by(time)%>%
   summarise(TotalReadsN=sum(binary), meanTPM = mean(tpm), Q4tpm = quantile(tpm, c(0.75)))
 genelist
-dataUpset<-tidy_data_long_no_zeros %>% group_by(time) 
-dataUpset %>% mutate(OnlyLarvae=sum(larvae), LarvaeGonad=sum(larvae,gonad))
 ```
+
+#left_join identifiers to target_ids
+```{r}
+library(dplyr)
+library(tidyr)
+library(tidyverse)
+#merging target_ids to count Matrix to get identifies for swissprot
+generosa_long<-left_join(tidy_data_long, blast_data, by="target_id", all=TRUE)#join data
+generosa_long<-generosa_long %>% relocate(identifiers, .after = target_id)#move column
+generosa_long<-generosa_long[-c(6:15)]#remove extra columns
+generosa_long$identifiers<-sub("\\.\\d+$", "", generosa_long$identifiers)#remove extra decimal point for joining purposes 
+```
+
+# Go to Uniprot website and grab all reviewed go terms
+[Uniprot Website](https://www.uniprot.org/uniprot/?query=*&fil=reviewed%3Ayes#)
+```{r}
+#loaded into gannet and pulled down
+uniprot_all_reviewed<-read.csv(file="https://gannet.fish.washington.edu/gigas/uniprot-reviewed_yes.tab", sep='\t', header=TRUE)
+# How to join tables by identifiers 
+names(uniprot_all_reviewed)[1]<-"identifiers" #renamed
+pgenerosa_proteins<-left_join(generosa_long, uniprot_all_reviewed, by ="identifiers")
+names(pgenerosa_proteins)[3]<-"tissue"
+write.csv(pgenerosa_proteins, file="/Users/oliviacattau/Documents/GitHub/code/characterize_larval_transciptome/pgenerosa_proteins_3_04_2022.tab")
+```
+
+# make searchable database
