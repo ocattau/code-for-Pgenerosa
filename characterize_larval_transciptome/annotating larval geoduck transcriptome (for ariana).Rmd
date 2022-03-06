@@ -31,7 +31,9 @@ output<-genelist %>% summarise("total reads (n)"=sum(binary),  "mean tpm" = mean
 ```
 
 #Make UpSet plot for visualization of overlapping data: 
+[link to UpSet R page](https://jokergoo.github.io/ComplexHeatmap-reference/book/upset-plot.html#upset-mode)
 ```{r}
+
 library(devtools)
 install_github("jokergoo/ComplexHeatmap")
 if (!require("BiocManager", quietly = TRUE))
