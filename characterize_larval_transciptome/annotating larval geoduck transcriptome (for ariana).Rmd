@@ -17,7 +17,7 @@ library(tidyr)
 library(dplyr)
 simple_data<-countMatrix
 long_data<- reshape(data=simple_data, idvar="target_id", varying=c("heart", "gonad", "ctenidia", "juv_sl", "juv_amb", "larvae"), v.name=c("tpm"), times=c("heart", "gonad", "ctenidia", "juv_sl", "juv_amb", "larvae"), new.row.names=1:8183754, direction="long")
-names(long_data)[2]<-"tissue"
+names(long_data)[2]<-"tissue" #renamed "time" to "tissue"
 summary(long_data)
 long_data$binary=ifelse(long_data$tpm > 0, 1, 0)
 long_data_zeros<-long_data[apply(long_data, 1, function(row) all(row !=0)),]
@@ -33,7 +33,6 @@ output<-genelist %>% summarise("total transcripts (n)"=sum(binary),  "mean tpm" 
 #Make UpSet plot for visualization of overlapping data: 
 [link to UpSet R page](https://jokergoo.github.io/ComplexHeatmap-reference/book/upset-plot.html#upset-mode)
 ```{r}
-
 library(devtools)
 install_github("jokergoo/ComplexHeatmap")
 if (!require("BiocManager", quietly = TRUE))
@@ -54,13 +53,25 @@ tidy_data$c=ifelse(tidy_data$ctenidia > 0, 1, 0)
 tidy_data$l=ifelse(tidy_data$larvae > 0, 1, 0)
 tidy_data$ja=ifelse(tidy_data$juv_amb > 0, 1, 0)
 tidy_data$jsl=ifelse(tidy_data$juv_sl > 0, 1, 0)
+#check code
+heart_length<-sum(tidy_data$h)
+gonad_length<-sum(tidy_data$g)
+ctenidia_length<-sum(tidy_data$c)
+larvae_length<-sum(tidy_data$l)
+juv_amb_length<-sum(tidy_data$ja)
+juv_sl_length<-sum(tidy_data$jsl)
+UpSet_test<-data.frame(tissue=c(heart_length, gonad_length, ctenidia_length, larvae_length, juv_amb_length, juv_sl_length))
+rownames(UpSet_test)<-c("heart", "gonad", "ctenidia", "larvae", "juv ambient", "juv low oa")
 #####
 #make upset plot, need to install above code to work 
-m1 = make_comb_mat(heart=tidy_data$heart, gonad=tidy_data$gonad, ctenidia=tidy_data$ctenidia, juv_amb=tidy_data$juv_amb, juv_sl=tidy_data$juv_sl, larvae=tidy_data$larvae) 
+m1 = make_comb_mat(heart=tidy_data$heart, gonad=tidy_data$gonad, ctenidia=tidy_data$ctenidia, juv_amb=tidy_data$juv_amb, juv_sl=tidy_data$juv_sl, larvae=tidy_data$larvae) #only distinct intersections
+m2 = make_comb_mat(heart=tidy_data$heart, gonad=tidy_data$gonad, ctenidia=tidy_data$ctenidia, juv_amb=tidy_data$juv_amb, juv_sl=tidy_data$juv_sl, larvae=tidy_data$larvae, mode="intersect") #only overlapping intersections (true Venn diagram) see https://jokergoo.github.io/ComplexHeatmap-reference/book/upset-plot.html for explanation 
 set_size(m1)
+comb_size(m1)
+comb_size(m2)
 p1<-UpSet(m1 [comb_degree(m1)<=2], column_title ="All intersections of 2 or less") #intersections 2 or less
 p2<-UpSet(m1 [comb_degree(m1)>=3], column_title= "All intersection of 3 or more") #intersections 3 or more
-p3<-UpSet(m1, pt_size = unit(2, "mm")) #everything
+p3<-UpSet(m2) #intersect mode
 p4<-UpSet(m1, top_annotation = HeatmapAnnotation(
     degree = as.character(comb_degree(m1)),
     "Intersection\nsize" = anno_barplot(comb_size(m1), 
@@ -69,12 +80,14 @@ p4<-UpSet(m1, top_annotation = HeatmapAnnotation(
         height = unit(2, "cm")
     ), 
     annotation_name_side = "left", 
-    annotation_name_rot = 0), column_title="p. generosa transcriptome distinct intersections")
-#remove all rows with zeros, creates dataframe with all overlapping genes
+    annotation_name_rot = 0), column_title="p. generosa transcriptome intersecting intersections")
+#remove all rows with zeros, creates data frame with all overlapping genes
 all_overlapping_genes<-tidy_data[apply(tidy_data, 1, function(row) all(row !=0)),]
+X<-split(tidy_data_long, tidy_data_long$time)
+Y <- lapply(seq_along(X), function(x) as.data.frame(X[[x]])[, 1:2]) 
 #####
 tidy_data_long<-tidy_data %>%
-  gather(key="time", value="tpm", heart:larvae) #name key as time, name value as tpm, gather columns heart:larvae
+  gather(key="time", value="tpm", heart:larvae) #name key as time, name value as tpm, gather columns heart:larvae, converts wide to long format
 head(tidy_data_long)
 #filter out zeros
 tidy_data_long_no_zeros<-tidy_data_long%>%
@@ -110,7 +123,7 @@ generosa_long$identifiers<-sub("\\.\\d+$", "", generosa_long$identifiers)#remove
 uniprot_all_reviewed<-read.csv(file="https://gannet.fish.washington.edu/gigas/uniprot-reviewed_yes.tab", sep='\t', header=TRUE)
 # How to join tables by identifiers 
 names(uniprot_all_reviewed)[1]<-"identifiers" #renamed
-pgenerosa_proteins<-left_join(generosa_long, uniprot_all_reviewed, by ="identifiers")
+pgenerosa_proteins<-left_join(generosa_counts, uniprot_all_reviewed, by ="identifiers")
 names(pgenerosa_proteins)[3]<-"tissue"
 #write.csv(pgenerosa_proteins, file="/Users/oliviacattau/Documents/GitHub/code/characterize_larval_transciptome/pgenerosa_proteins_3_04_2022.tab")
 ```
@@ -127,9 +140,9 @@ copy_to(con, pgenerosa_proteins , "pgenerosa",
 pgenerosa_db <- tbl(con, "pgenerosa")
 #####
 #options for DB search
-all_present_data<-pgenerosa_db %>% filter(binary >=1)#all data that has tpm > 0
+all_present_data<-pgenerosa_db %>% filter(binary >=1) #all data that has tpm > 0
 all_present_data
-all_q4_data<-pgenerosa_db %>% filter(tpm > min_q4) # all data tpm > q4 (see above code)
+all_q4_data<-pgenerosa_db %>% filter(tpm > min_q4) #all data tpm > q4 (see above code)
 all_q4_data
 pgenerosa_db %>% select()
 groups<-pgenerosa_db %>% group_by(tissue(heart)) %>% summarise(average = mean(tpm))

@@ -1,0 +1,75 @@
+---
+title: "clean code annotating larval geoduck transcriptome 3.8.22"
+author: "Olivia Cattau"
+date: "3/9/2022"
+output: html_document
+---
+#load count data from kallisto output(s)
+```{r}
+countMatrix<-read.table(file="https://raw.githubusercontent.com/sr320/nb-2022/main/P_generosa/analyses/kallisto-0207.isoform.counts.matrix", header=TRUE, sep = '\t')
+names(countMatrix)[1]<-"target_id"
+head(countMatrix)
+```
+
+#Make UpSet plot for visualization of overlapping data: 
+[link to UpSet R page](https://jokergoo.github.io/ComplexHeatmap-reference/book/upset-plot.html#upset-mode)
+```{r}
+library(devtools)
+install_github("jokergoo/ComplexHeatmap")
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install(version = "3.14")
+library(BiocManager)
+library(tidyr)
+library(dplyr)
+library(UpSetR)
+library(ComplexHeatmap)
+tidy_data<-countMatrix
+head(tidy_data)
+#make upset plot, need to install above code to work 
+m1 = make_comb_mat(heart=tidy_data$heart, gonad=tidy_data$gonad, ctenidia=tidy_data$ctenidia, juv_amb=tidy_data$juv_amb, juv_sl=tidy_data$juv_sl, larvae=tidy_data$larvae) #only distinct intersections
+m2 = make_comb_mat(heart=tidy_data$heart, gonad=tidy_data$gonad, ctenidia=tidy_data$ctenidia, juv_amb=tidy_data$juv_amb, juv_sl=tidy_data$juv_sl, larvae=tidy_data$larvae, mode="intersect") #only overlapping intersections (true Venn diagram) see https://jokergoo.github.io/ComplexHeatmap-reference/book/upset-plot.html for explanation 
+set_size(m1)
+comb_size(m1)
+comb_size(m2)
+p1<-UpSet(m1 [comb_degree(m1)<=2], column_title ="All intersections of 2 or less") #intersections 2 or less
+p2<-UpSet(m1 [comb_degree(m1)>=3], column_title= "All intersection of 3 or more") #intersections 3 or more
+p3<-UpSet(m2) #intersect mode
+p4<-UpSet(m1, top_annotation = HeatmapAnnotation(
+    degree = as.character(comb_degree(m1)),
+    "Intersection\nsize" = anno_barplot(comb_size(m1), 
+        border = FALSE, 
+        gp = gpar(fill = "black"), 
+        height = unit(2, "cm")
+    ), 
+    annotation_name_side = "left", 
+    annotation_name_rot = 0), column_title="p. generosa transcriptome intersecting intersections")
+#####testing lengths
+tidy_data_long<-tidy_data %>%
+  gather(key="tissue", value="tpm", heart:larvae) #name key as time, name value as tpm, gather columns heart:larvae, converts wide to long format
+head(tidy_data_long)
+tidy_data_long$binary=ifelse(tidy_data_long$tpm > 0, 1, 0)
+tidy_data$h=ifelse(tidy_data$heart > 0, 1, 0)
+tidy_data$g=ifelse(tidy_data$gonad >0, 1, 0)
+tidy_data$c=ifelse(tidy_data$ctenidia > 0, 1, 0)
+tidy_data$l=ifelse(tidy_data$larvae > 0, 1, 0)
+tidy_data$ja=ifelse(tidy_data$juv_amb > 0, 1, 0)
+tidy_data$jsl=ifelse(tidy_data$juv_sl > 0, 1, 0)
+#check code
+heart_length<-sum(tidy_data$h)
+gonad_length<-sum(tidy_data$g)
+ctenidia_length<-sum(tidy_data$c)
+larvae_length<-sum(tidy_data$l)
+juv_amb_length<-sum(tidy_data$ja)
+juv_sl_length<-sum(tidy_data$jsl)
+UpSet_test<-data.frame(tissue=c(heart_length, gonad_length, ctenidia_length, larvae_length, juv_amb_length, juv_sl_length))
+rownames(UpSet_test)<-c("heart", "gonad", "ctenidia", "larvae", "juv ambient", "juv low oa")
+#####testing intersections from UpSet plots
+
+all_overlapping_genes<-tidy_data[apply(tidy_data, 1, function(row) all(row !=0)),]#remove all rows with zeros, creates data frame with all overlapping genes
+length(all_overlapping_genes$target_id) #71,960
+length(tidy_data$target_id) #1,363,959
+gonad.larvae<-tidy_data %>% select(target_id, gonad, larvae) %>% filter(gonad > 0, larvae >0) %>% pull(target_id)
+split_data<-split(tidy_data_long, tidy_data_long$tissue)
+split_data$ctenidia
+```
