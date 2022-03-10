@@ -70,6 +70,4 @@ all_overlapping_genes<-tidy_data[apply(tidy_data, 1, function(row) all(row !=0))
 length(all_overlapping_genes$target_id) #71,960
 length(tidy_data$target_id) #1,363,959
 gonad.larvae<-tidy_data %>% select(target_id, gonad, larvae) %>% filter(gonad > 0, larvae >0) %>% pull(target_id)
-split_data<-split(tidy_data_long, tidy_data_long$tissue)
-split_data$ctenidia
 ```
