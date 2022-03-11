@@ -55,6 +55,8 @@ m1 = make_comb_mat(new_data) #only distinct intersections
 m2=make_comb_mat(new_data, mode="intersect")
 set_size(m1)
 comb_size(m1)
+comb_data<-as.data.frame(comb_size(m1))
+comb_data %>% 
 p1<-UpSet(m1 [comb_degree(m1)<=2], column_title ="All intersections of 2 or less") #intersections 2 or less
 p2<-UpSet(m1 [comb_degree(m1)>=3], column_title= "All intersection of 3 or more") #intersections 3 or more
 p3<-UpSet(m1, top_annotation = HeatmapAnnotation(
