@@ -5,7 +5,7 @@ date: "11/3/2021"
 output: html_document
 ---
 # Download stand alone blast, if on Mox you can skip to "Get a Query Sequence"
-
+# This is an example since I used files on my local computer: see Mox sh file for actual Blasting information
 ```{bash}
 bldir = "/Users/oliviacattau/Documents/analysis/ncbi-blast-2.12.0+/bin/"
 !{bldir}blastx -h
