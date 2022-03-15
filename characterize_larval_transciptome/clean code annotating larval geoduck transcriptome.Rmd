@@ -11,6 +11,12 @@ names(countMatrix)[1]<-"target_id"
 head(countMatrix)
 ```
 
+#load blast data, see blasting .sh file to see code (in GitHub)
+```{r}
+blast_data<-read.table(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Panopea-generosa-uniprot_blastx.tab")
+names(blast_data)[1]<-"target_id" #renamed to match countMATRIX data
+names(blast_data)[2]<-"identifiers" #renamed to search in swiss prot 
+```
 #long data
 ```{r}
 #convert to long data format 
@@ -106,4 +112,32 @@ gonad.larvae.juv_amb.juv_sl.heart<-tidy_data %>% select(target_id, gonad, larvae
 length(gonad.larvae.juv_amb.juv_sl.heart$target_id) #78,755
 gonad.larvae.juv_amb.juv_sl.heart.ctenidia<-tidy_data %>% select(target_id, gonad, larvae, juv_amb, juv_sl, heart, ctenidia) %>% filter(gonad > 0, larvae >0, juv_amb >0, juv_sl > 0, heart>0, ctenidia > 0)
 length(gonad.larvae.juv_amb.juv_sl.heart.ctenidia$target_id) #71,960, agrees with all_overlapping_genes
+#####pulling gene lists from sorted columns
+juv_amb.only<-tidy_data %>% select(target_id, juv_amb) %>% filter (juv_amb > 0)
+nrow(tidy_data) #all genes
+nrow(distinct(tidy_data, tidy_data$juv_amb)) #318,959 distinct to juv_amb
+nrow(distinct(tidy_data, juv_amb, juv_sl)) #469,156 distinct to juveniles 
 ```
+
+# left_join identifiers to target_ids
+```{r}
+library(dplyr)
+library(tidyr)
+library(tidyverse)
+#merging target_ids to count Matrix to get identifies for swissprot
+pgenerosa_complete<-left_join(countMatrix, blast_data, by="target_id", all=TRUE)#join data
+pgenerosa_complete<-pgenerosa_complete %>% relocate(identifiers, .after = target_id)#move column
+pgenerosa_complete<-pgenerosa_complete[-c(9:18)]#remove extra columns
+pgenerosa_complete$identifiers<-sub("\\.\\d+$", "", pgenerosa_complete$identifiers)#remove extra decimal point for joining purposes
+```
+
+# Go to Uniprot website and grab all go terms
+[Uniprot Website](https://www.uniprot.org/uniprot/?query=*&fil=reviewed%3Ayes#)
+```{r}
+library(dplyr)
+#loaded into gannet and pulled down
+uniprot_all_reviewed<-read.csv(file="https://gannet.fish.washington.edu/gigas/uniprot-reviewed_yes.tab", sep='\t', header=TRUE)
+names(uniprot_all_reviewed)[1]<-"identifiers" #renamed
+pgenerosa_proteins<-left_join(pgenerosa_complete, uniprot_all_reviewed, by ="identifiers")
+```
+
