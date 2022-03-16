@@ -113,10 +113,11 @@ length(gonad.larvae.juv_amb.juv_sl.heart$target_id) #78,755
 gonad.larvae.juv_amb.juv_sl.heart.ctenidia<-tidy_data %>% select(target_id, gonad, larvae, juv_amb, juv_sl, heart, ctenidia) %>% filter(gonad > 0, larvae >0, juv_amb >0, juv_sl > 0, heart>0, ctenidia > 0)
 length(gonad.larvae.juv_amb.juv_sl.heart.ctenidia$target_id) #71,960, agrees with all_overlapping_genes
 #####pulling gene lists from sorted columns
-juv_amb.only<-tidy_data %>% select(target_id, juv_amb) %>% filter (juv_amb > 0)
 nrow(tidy_data) #all genes
 nrow(distinct(tidy_data, tidy_data$juv_amb)) #318,959 distinct to juv_amb
 nrow(distinct(tidy_data, juv_amb, juv_sl)) #469,156 distinct to juveniles 
+juv_amb.only<-tidy_data %>% select(target_id, juv_amb) %>% filter (juv_amb > 0) %>% select(target_id)
+juv_sl.only<-tidy_data %>% select(target_id, juv_sl) 
 ```
 
 # left_join identifiers to target_ids
