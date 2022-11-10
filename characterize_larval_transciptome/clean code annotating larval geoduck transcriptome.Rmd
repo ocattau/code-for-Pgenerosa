@@ -19,6 +19,7 @@ names(blast_data)[2]<-"identifiers" #renamed to search in swiss prot
 ```
 #long data
 ```{r}
+library(tidyverse)
 #convert to long data format 
 tidy_data<-countMatrix
 head(tidy_data)
@@ -47,22 +48,24 @@ new_data<-as.matrix(new_data)
 [link to UpSet R page](https://jokergoo.github.io/ComplexHeatmap-reference/book/upset-plot.html#upset-mode)
 ```{r}
 library(devtools)
-install_github("jokergoo/ComplexHeatmap")
-if (!require("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
-BiocManager::install(version = "3.14")
+#install_github("jokergoo/ComplexHeatmap")
+#if (!require("BiocManager", quietly = TRUE))
+    #install.packages("BiocManager")
+#BiocManager::install(version = "3.14")
 library(BiocManager)
 library(tidyr)
-library(dplyr)
 library(UpSetR)
 library(ComplexHeatmap)
+library(tidyverse)
+library(magrittr) # needs to be run every time you start R and want to use %>%
+library(dplyr)    # alternatively, this also loads %>%
 #make upset plot, need to install above code to work 
 m1 = make_comb_mat(new_data) #only distinct intersections
 m2=make_comb_mat(new_data, mode="intersect")
 set_size(m1)
 comb_size(m1)
 comb_data<-as.data.frame(comb_size(m1))
-comb_data %>% 
+
 p1<-UpSet(m1 [comb_degree(m1)<=2], column_title ="All intersections of 2 or less") #intersections 2 or less
 p2<-UpSet(m1 [comb_degree(m1)>=3], column_title= "All intersection of 3 or more") #intersections 3 or more
 p3<-UpSet(m1, top_annotation = HeatmapAnnotation(
