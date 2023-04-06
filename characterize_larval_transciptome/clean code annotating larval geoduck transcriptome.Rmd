@@ -125,11 +125,15 @@ juv_sl.only<-tidy_data %>% select(target_id, juv_sl)
 
 # left_join identifiers to target_ids
 ```{r}
+install.packages("vctrs")
+library(vctrs)
 library(dplyr)
 library(tidyr)
 library(tidyverse)
 #merging target_ids to count Matrix to get identifies for swissprot
-pgenerosa_complete<-left_join(countMatrix, blast_data, by="target_id", all=TRUE)#join data
+pgenerosa_complete<-countMatrix %>% 
+  left_join(blast_data, by=c("target_id"))
+
 pgenerosa_complete<-pgenerosa_complete %>% relocate(identifiers, .after = target_id)#move column
 pgenerosa_complete<-pgenerosa_complete[-c(9:18)]#remove extra columns
 pgenerosa_complete$identifiers<-sub("\\.\\d+$", "", pgenerosa_complete$identifiers)#remove extra decimal point for joining purposes

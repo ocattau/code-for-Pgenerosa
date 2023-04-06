@@ -1,0 +1,19 @@
+---
+title: "geoduck genome linked transcriptome"
+author: "Olivia Cattau"
+date: '2023-04-06'
+output: html_document
+---
+
+#load new genome linked transcriptome PGEN
+```{r}
+countMatrix<-read.table(file="https://raw.githubusercontent.com/sr320/paper-geoduck-gene-exp/main/data/salmon.merged.gene_tpm.tsv", header=TRUE, sep = '\t')
+names(countMatrix)[1]<-"target_id"
+head(countMatrix)
+```
+
+#load geoduck gene annotation file from 
+```{r}
+mappingMatrix<-read.table(file="https://gannet.fish.washington.edu/Atumefaciens/20220419-pgen-gene_annotation_mapping/20220419-pgen-gene-accessions-gene_id-gene_name-gene_description-alt_gene_description-go_ids.tab", header=TRUE, sep = '\t', fill=TRUE)
+colnames(mappingMatrix) <- c("target_id", "identifier", "genecode1", "genecode2", "annotation", "protein", "goterms")
+```
