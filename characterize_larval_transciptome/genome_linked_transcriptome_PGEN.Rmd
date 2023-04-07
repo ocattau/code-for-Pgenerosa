@@ -4,16 +4,104 @@ author: "Olivia Cattau"
 date: '2023-04-06'
 output: html_document
 ---
+```{r}
+library(tidyverse)
+library(stringr)
+library(UpSetR)
+```
+
 
 #load new genome linked transcriptome PGEN
 ```{r}
-countMatrix<-read.table(file="https://raw.githubusercontent.com/sr320/paper-geoduck-gene-exp/main/data/salmon.merged.gene_tpm.tsv", header=TRUE, sep = '\t')
-names(countMatrix)[1]<-"target_id"
-head(countMatrix)
+salmonMatrix<-read.table(file="https://raw.githubusercontent.com/sr320/paper-geoduck-gene-exp/main/data/salmon.merged.gene_tpm.tsv", header=TRUE, sep = '\t')
+names(salmonMatrix)[1]<-"target_id"
+head(salmonMatrix)
 ```
 
 #load geoduck gene annotation file from 
 ```{r}
 mappingMatrix<-read.table(file="https://gannet.fish.washington.edu/Atumefaciens/20220419-pgen-gene_annotation_mapping/20220419-pgen-gene-accessions-gene_id-gene_name-gene_description-alt_gene_description-go_ids.tab", header=TRUE, sep = '\t', fill=TRUE)
 colnames(mappingMatrix) <- c("target_id", "identifier", "genecode1", "genecode2", "annotation", "protein", "goterms")
+```
+
+#long format
+```{r}
+tidy_data<-salmonMatrix
+head(tidy_data)
+tidy_data_long<-tidy_data %>%
+  gather(key="tissue", value="tpm", ctenidia:larvae) #name key as time, name value as tpm, gather columns heart:larvae, converts wide to long format
+head(tidy_data_long)
+tidy_data_long$binary=ifelse(tidy_data_long$tpm > 0, 1, 0)
+```
+
+
+#combine datasets into one gene annotation file
+```{r}
+pgenerosa_complete<-salmonMatrix %>% 
+  left_join(mappingMatrix, by=c("target_id"))
+pgenerosa_long<-tidy_data_long %>%
+  left_join(mappingMatrix, by=c("target_id"))
+```
+
+#organize data for UpSet plot
+```{r}
+library(dplyr)
+#####make new variables with binary data
+tidy_data$heart=ifelse(tidy_data$heart > 0, 1, 0)
+tidy_data$gonad=ifelse(tidy_data$gonad >0, 1, 0)
+tidy_data$ctenidia=ifelse(tidy_data$ctenidia > 0, 1, 0)
+tidy_data$larvae=ifelse(tidy_data$larvae > 0, 1, 0)
+tidy_data$juvenile=ifelse(tidy_data$juvenile > 0, 1, 0)
+new_data<-tidy_data %>% select(target_id,heart, gonad, ctenidia, larvae, juvenile)
+new_data<-tibble::column_to_rownames(new_data, var="target_id")
+new_data<-as.matrix(new_data) #count matrix for UpSet plots
+```
+
+#Make UpSet plot for visualization of overlapping data: 
+[link to UpSet R page](https://jokergoo.github.io/ComplexHeatmap-reference/book/upset-plot.html#upset-mode)
+```{r}
+m1 = make_comb_mat(new_data) #only distinct intersections
+m2=make_comb_mat(new_data, mode="intersect")
+set_size(m1)
+comb_size(m1)
+comb_data<-as.data.frame(comb_size(m1))
+
+p1<-UpSet(m1 [comb_degree(m1)<=2], column_title ="All intersections of 2 or less") #intersections 2 or less
+p2<-UpSet(m1 [comb_degree(m1)>=3], column_title= "All intersection of 3 or more") #intersections 3 or more
+p3<-UpSet(m1, top_annotation = HeatmapAnnotation(
+    degree = as.character(comb_degree(m1)),
+    "Intersection\nsize" = anno_barplot(comb_size(m1), 
+        border = FALSE, 
+        gp = gpar(fill = "black"), 
+        height = unit(2, "cm")
+    ), 
+    annotation_name_side = "left", 
+    annotation_name_rot = 0), column_title="p. generosa transcriptome distinct intersections") #distinct mode
+
+p5<-UpSet(m2 [comb_degree(m2)<=2], column_title ="All intersections of 2 or less")
+p6<-UpSet(m2 [comb_degree(m2)>=3], column_title ="All intersections of 3 or more")
+#####testing comb_set sizes
+x2<-comb_size(m1)
+x3<-as.data.frame(x2)
+sum(x3$x2) #34,947 --distinct mode
+x4<-comb_size(m2)
+x5<-as.data.frame(x4)
+sum(x5$x4) #450,489 --intersect mode
+```
+
+#basic statistics 
+```{r}
+full_summary<-pgenerosa_long %>%
+  group_by(tissue) %>%
+  summarize(non_zero_count = sum(binary != 0))
+
+full_summary<-pgenerosa_long %>%
+  group_by(tissue) %>%
+  count(tpm > 0)
+
+ctedidia<-pgenerosa_long %>%
+  filter(tissue== "ctenidia" | tissue == "gonad")
+
+
+  
 ```
