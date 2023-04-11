@@ -15,13 +15,20 @@ library(UpSetR)
 ```{r}
 salmonMatrix<-read.table(file="https://raw.githubusercontent.com/sr320/paper-geoduck-gene-exp/main/data/salmon.merged.gene_tpm.tsv", header=TRUE, sep = '\t')
 names(salmonMatrix)[1]<-"target_id"
+names(salmonMatrix)[2]<-"gene"
 head(salmonMatrix)
 ```
 
 #load geoduck gene annotation file from 
 ```{r}
 mappingMatrix<-read.table(file="https://gannet.fish.washington.edu/Atumefaciens/20220419-pgen-gene_annotation_mapping/20220419-pgen-gene-accessions-gene_id-gene_name-gene_description-alt_gene_description-go_ids.tab", header=TRUE, sep = '\t', fill=TRUE)
-colnames(mappingMatrix) <- c("target_id", "identifier", "genecode1", "genecode2", "annotation", "protein", "goterms")
+colnames(mappingMatrix) <- c("target_id", "accessions", "gene_id", "gene_name", "gene_descripton", "alt_gene_decription", "all_GO_ids")
+```
+
+#load goslim mapping from Swiss Prott
+[link here](https://github.com/RobertsLab/code/tree/master/r_projects/sam/20230328-pgen-gene_annotation-update) 
+```{r}
+goslims<-read.table(file="https://raw.githubusercontent.com/RobertsLab/code/master/r_projects/sam/20230328-pgen-gene_annotation-update/outputs/02-goslim-mapping/20230329-pgen-annotations-SwissProt-GO-BP_GOslim.tab", header=TRUE, sep = '\t', fill=TRUE)
 ```
 
 #long format
@@ -35,10 +42,12 @@ tidy_data_long$binary=ifelse(tidy_data_long$tpm > 0, 1, 0)
 ```
 
 
-#combine datasets into one gene annotation file
+#combine datasets into one gene annotation file***
 ```{r}
 pgenerosa_complete<-salmonMatrix %>% 
   left_join(mappingMatrix, by=c("target_id"))
+pgenerosa_goslims<-pgenerosa_complete %>%
+  right_join()
 pgenerosa_long<-tidy_data_long %>%
   left_join(mappingMatrix, by=c("target_id"))
 ```
