@@ -8,6 +8,18 @@ output: html_document
 library(tidyverse)
 library(stringr)
 library(UpSetR)
+library(devtools)
+#install_github("jokergoo/ComplexHeatmap")
+#if (!require("BiocManager", quietly = TRUE))
+    #install.packages("BiocManager")
+#BiocManager::install(version = "3.14")
+library(BiocManager)
+library(tidyr)
+library(UpSetR)
+library(ComplexHeatmap)
+library(tidyverse)
+library(magrittr) # needs to be run every time you start R and want to use %>%
+library(dplyr)   
 ```
 
 
@@ -22,7 +34,7 @@ head(salmonMatrix)
 #load geoduck gene annotation file from 
 ```{r}
 mappingMatrix<-read.table(file="https://gannet.fish.washington.edu/Atumefaciens/20220419-pgen-gene_annotation_mapping/20220419-pgen-gene-accessions-gene_id-gene_name-gene_description-alt_gene_description-go_ids.tab", header=TRUE, sep = '\t', fill=TRUE)
-colnames(mappingMatrix) <- c("target_id", "accessions", "gene_id", "gene_name", "gene_descripton", "alt_gene_decription", "all_GO_ids")
+colnames(mappingMatrix) <- c("target_id", "identifiers", "gene_id", "gene_name", "annotation", "alt_annotation", "goterms")
 ```
 
 #load goslim mapping from Swiss Prott
@@ -47,9 +59,54 @@ tidy_data_long$binary=ifelse(tidy_data_long$tpm > 0, 1, 0)
 pgenerosa_complete<-salmonMatrix %>% 
   left_join(mappingMatrix, by=c("target_id"))
 pgenerosa_goslims<-pgenerosa_complete %>%
-  right_join()
+  left_join(goslims, by=c("gene"))
 pgenerosa_long<-tidy_data_long %>%
   left_join(mappingMatrix, by=c("target_id"))
+pgenerosa_goslims_long<-pgenerosa_long %>%
+  left_join(pgenerosa_goslims, by=c("target_id"))
+```
+
+#filter by tissue type
+```{r}
+tidy1<-pgenerosa_goslims_long %>%
+  group_by(tissue) %>%
+  filter(tpm > 0) 
+
+ctenidia<-pgenerosa_goslims %>%
+  filter(ctenidia > 0 & gonad == 0 & heart == 0 & juvenile == 0 & larvae == 0)
+#340 obs (unique to ctenidia)
+write.csv(ctenidia, file="/Users/oliviacattau/Documents/GitHub/code-for-Pgenerosa/output/ctenidia_unique.csv")
+
+gonad<-pgenerosa_goslims %>%
+  filter(gonad > 0 & ctenidia == 0 & heart == 0 & juvenile == 0 & larvae == 0)
+#119 obs (unique to gonad)
+write.csv(gonad, file="/Users/oliviacattau/Documents/GitHub/code-for-Pgenerosa/output/gonad_unique.csv")
+
+heart<-pgenerosa_goslims %>%
+  filter(heart > 0 & ctenidia == 0 & gonad == 0 & juvenile == 0 & larvae == 0)
+#371 obs (unique to heart)
+write.csv(heart, file="/Users/oliviacattau/Documents/GitHub/code-for-Pgenerosa/output/heart_unique.csv")
+
+juvenile<-pgenerosa_goslims %>%
+  filter(juvenile > 0 & ctenidia == 0 & heart == 0 & gonad == 0 & larvae == 0)
+#2,180 obs (unique to juvenile alone)
+write.csv(juvenile, file="/Users/oliviacattau/Documents/GitHub/code-for-Pgenerosa/output/juvenile_unique.csv")
+
+larvae<-pgenerosa_goslims %>%
+  filter(larvae > 0 & ctenidia == 0 & heart == 0 & gonad == 0 & juvenile == 0)
+#868 obs (unique to larvae alone)
+write.csv(larvae, file="/Users/oliviacattau/Documents/GitHub/code-for-Pgenerosa/output/larvae_unique.csv")
+
+ctenidia_gonad<-pgenerosa_goslims %>%
+  filter(ctenidia > 0 & gonad > 0 & heart == 0 & juvenile == 0 & larvae == 0)
+#20 obs 
+
+juvorlarv<-pgenerosa_goslims %>%
+  filter(ctenidia == 0 & gonad == 0 & heart == 0) %>%
+  filter(juvenile > 0 & larvae > 0)
+#5,022 obs unique to both juveniles or larvae
+#1,974 obs unique to juveniles and larvae together
+
 ```
 
 #organize data for UpSet plot
@@ -100,16 +157,15 @@ sum(x5$x4) #450,489 --intersect mode
 
 #basic statistics 
 ```{r}
-full_summary<-pgenerosa_long %>%
+full_summary<-pgenerosa_goslims_long %>%
   group_by(tissue) %>%
   summarize(non_zero_count = sum(binary != 0))
 
-full_summary<-pgenerosa_long %>%
+full_summary2<-pgenerosa_goslims_long %>%
   group_by(tissue) %>%
   count(tpm > 0)
 
-ctedidia<-pgenerosa_long %>%
-  filter(tissue== "ctenidia" | tissue == "gonad")
+
 
 
   
