@@ -107,6 +107,9 @@ juvorlarv<-pgenerosa_goslims %>%
 #5,022 obs unique to both juveniles or larvae
 #1,974 obs unique to juveniles and larvae together
 
+all_unique<-pgenerosa_goslims %>%
+   filter(ctenidia > 0 & gonad > 0 & heart > 0 & juvenile > 0 & larvae > 0)
+write.csv(all_unique, file="/Users/oliviacattau/Documents/GitHub/code-for-Pgenerosa/output/all_unique.csv")
 ```
 
 #organize data for UpSet plot
@@ -153,20 +156,4 @@ sum(x3$x2) #34,947 --distinct mode
 x4<-comb_size(m2)
 x5<-as.data.frame(x4)
 sum(x5$x4) #450,489 --intersect mode
-```
-
-#basic statistics 
-```{r}
-full_summary<-pgenerosa_goslims_long %>%
-  group_by(tissue) %>%
-  summarize(non_zero_count = sum(binary != 0))
-
-full_summary2<-pgenerosa_goslims_long %>%
-  group_by(tissue) %>%
-  count(tpm > 0)
-
-
-
-
-  
 ```
