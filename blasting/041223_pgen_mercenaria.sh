@@ -18,9 +18,9 @@
 
 
 /gscratch/srlab/programs/ncbi-blast-2.8.1+/bin/blastx \
--query /gscratch/srlab/ocattau/clamdata/Panopea-generosa-v1.0.a4.gene.fasta \
--db /gscratch/srlab/ocattau/clamdata/ncbi_dataset/data/GCF_021730395.1/rna.fna \
--out /gscratch/srlab/ocattau/clamdata/Panopea-Mercenaria_blastx.tab \
+-query /gscratch/srlab/ocattau/clamdata/ncbi_dataset/data/GCF_021730395.1/rna.fna \
+-db /gscratch/srlab/blastdbs/ncbi-sp-v5_20210224/swissprot \
+-out /gscratch/srlab/ocattau/clamdata/Pgen_Mercenaria_blastx.tab \
 -evalue 1E-05 \
 -num_threads 30 \
 -max_target_seqs 1 \
