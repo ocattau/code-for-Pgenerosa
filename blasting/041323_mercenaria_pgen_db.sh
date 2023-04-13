@@ -1,7 +1,6 @@
 #!/bin/bash
 ## 04.12.23 blast p.generosa against mercenaria mercenaria on MOX
-#SBATCH --job-name=blasting_pgen_mercenaria_041223
-## Allocation Definition
+#SBATCH --job-name=blasting_mercenaria_on_pgen
 #SBATCH --account=srlab
 #SBATCH --partition=srlab
 ## Nodes
@@ -16,16 +15,16 @@
 ## Specify the working directory for this job
 #SBATCH --chdir=/gscratch/srlab/ocattau
 
-/gscratch/srlab/programs/ncbi-blast-2.8.1+/bin/makeblastdb \
--in /gscratch/srlab/ocattau/clamdata/Panopea-generosa-v1.0.a4.gene.fasta \
--dbtype nucl \
--out /gscratch/srlab/blastdbs/Panopea-generosa-v2-db
+#/gscratch/srlab/programs/ncbi-blast-2.8.1+/bin/makeblastdb \
+#-in /gscratch/srlab/ocattau/clamdata/Panopea-generosa-v1.0.a4.gene.fasta \
+#-dbtype nucl \
+#-out /gscratch/srlab/ocattau/clamdata/blastdb2/Panopea-generosa-v2-db
 
-/gscratch/srlab/programs/ncbi-blast-2.8.1+/bin/blastx \
+/gscratch/srlab/programs/ncbi-blast-2.8.1+/bin/blastn \
 -query /gscratch/srlab/ocattau/clamdata/ncbi_dataset/data/GCF_021730395.1/rna.fna \
--db /gscratch/srlab/blastdbs/Panopea-generosa-v2-db\
+-db /gscratch/srlab/ocattau/clamdata/blastdb2/Panopea-generosa-v2-db \
 -out /gscratch/srlab/ocattau/clamdata/Mercenaria_Pgenenerosa_blastx.tab \
--evalue 1E-05 \
+-evalue 1E-20 \
 -num_threads 30 \
 -max_target_seqs 1 \
 -max_hsps 1 \
