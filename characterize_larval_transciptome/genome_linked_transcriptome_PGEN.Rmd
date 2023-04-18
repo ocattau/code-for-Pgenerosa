@@ -50,10 +50,11 @@ goslims<-read.table(file="https://raw.githubusercontent.com/RobertsLab/code/mast
 ```{r}
 #from Mox blasting Manilla/Mercenaria on Pgen
 Manilla_Pgen<-read.table(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Manilla_Pgenenerosa_blastx.tab")
+#761 shared genes
 
 Pgen_Manila<-read.table(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_Manilla_db_blastx.tab")
+#657 shared genes
 
-#761 shared genes
 Mercenaria_Pgen<-read.table(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Mercenaria_Pgenenerosa_blastx.tab")
 #6,521 shared genes
 
@@ -61,6 +62,14 @@ Pgen_Mercenaria<-read.table(file="https://gannet.fish.washington.edu/gigas/data/
 #5,099 shared 
 
 ```
+
+#load genomes from blast output
+```{r}
+
+
+
+```
+
 
 #long format
 ```{r}
