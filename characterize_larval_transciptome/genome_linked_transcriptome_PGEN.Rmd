@@ -29,18 +29,37 @@ salmonMatrix<-read.table(file="https://raw.githubusercontent.com/sr320/paper-geo
 names(salmonMatrix)[1]<-"target_id"
 names(salmonMatrix)[2]<-"gene"
 head(salmonMatrix)
+#34,947
 ```
 
 #load geoduck gene annotation file from 
 ```{r}
 mappingMatrix<-read.table(file="https://gannet.fish.washington.edu/Atumefaciens/20220419-pgen-gene_annotation_mapping/20220419-pgen-gene-accessions-gene_id-gene_name-gene_description-alt_gene_description-go_ids.tab", header=TRUE, sep = '\t', fill=TRUE)
 colnames(mappingMatrix) <- c("target_id", "identifiers", "gene_id", "gene_name", "annotation", "alt_annotation", "goterms")
+#7,736
 ```
 
 #load goslim mapping from Swiss Prott
 [link here](https://github.com/RobertsLab/code/tree/master/r_projects/sam/20230328-pgen-gene_annotation-update) 
 ```{r}
 goslims<-read.table(file="https://raw.githubusercontent.com/RobertsLab/code/master/r_projects/sam/20230328-pgen-gene_annotation-update/outputs/02-goslim-mapping/20230329-pgen-annotations-SwissProt-GO-BP_GOslim.tab", header=TRUE, sep = '\t', fill=TRUE)
+#7,737
+```
+
+#download other clam species
+```{r}
+#from Mox blasting Manilla/Mercenaria on Pgen
+Manilla_Pgen<-read.table(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Manilla_Pgenenerosa_blastx.tab")
+
+Pgen_Manila<-read.table(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_Manilla_db_blastx.tab")
+
+#761 shared genes
+Mercenaria_Pgen<-read.table(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Mercenaria_Pgenenerosa_blastx.tab")
+#6,521 shared genes
+
+Pgen_Mercenaria<-read.table(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_Mercenaria_db_blastx.tab")
+#5,099 shared 
+
 ```
 
 #long format
@@ -55,26 +74,90 @@ tidy_data_long$binary=ifelse(tidy_data_long$tpm > 0, 1, 0)
 
 
 #combine datasets into one gene annotation file***
+needs double checks
 ```{r}
 pgenerosa_complete<-salmonMatrix %>% 
-  left_join(mappingMatrix, by=c("target_id"))
+  left_join(mappingMatrix, by=c("target_id")) 
+# could also do this with goslims
+pgenerosa_simple_goslims<-salmonMatrix %>% #best data set
+  left_join(goslims, by=c("gene"))
 pgenerosa_goslims<-pgenerosa_complete %>%
   left_join(goslims, by=c("gene"))
-pgenerosa_long<-tidy_data_long %>%
-  left_join(mappingMatrix, by=c("target_id"))
-pgenerosa_goslims_long<-pgenerosa_long %>%
+pgenerosa_long<-tidy_data_long %>% #best long data set
   left_join(pgenerosa_goslims, by=c("target_id"))
 ```
 
+#use seperate to break semi-colons in data sets
+```{r}
+# check for duplicate values within each cell using strsplit() and anyDuplicated()
+duplicates <- sapply(strsplit(pgenerosa_simple_goslims$gene_id, ";"), anyDuplicated)
+
+# print the row indices of cells with duplicate values
+if (any(duplicates)) {
+  print(which(duplicates > 0))
+} else {
+  print("No duplicates found")
+}
+
+#accession numbers = no duplicates
+#gene_ID = no duplicates
+#allGoID duplicates = column 24458
+#BP_GO_ID duplicates = column 24458
+#CC_GO_ID duplicates = no duplicates
+#MF_GO_ID duplicates = columns 4561  8040 13044 16138
+#--------------------------------
+#GOslim duplicates lots and lots 
+#Terms duplicates lots and lots 
+
+#break cells and reform with unique values only
+distinct_goslims <- pgenerosa_simple_goslims %>%
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+  distinct(Term_unique, .keep_all = TRUE) %>%
+  mutate(GOslim_unique = lapply(strsplit(as.character(GOslim), ";"),function(GOslim_unique) paste0(unique(GOslim_unique), collapse = ";"))) %>% 
+  distinct(GOslim_unique, .keep_all = TRUE)
+
+distinct_goslims_accessions <- distinct_goslims %>%
+  mutate(num_cols = str_count(accessions, ";") + 1) %>%
+  separate(accessions, into = paste0("accession", 1:33), sep = ";", fill = "right")
+#33 columns of accessions 
+
+distinct_terms<-distinct_goslims %>%
+  mutate(num_cols = str_count(GOslim_unique, ";") + 1) %>%
+  separate(GOslim_unique, into = paste0("GOslims_unique", 1:22), sep = ";", fill = "right")
+#22 columns of GOslims
+
+distinct_terms2<-distinct_goslims %>%
+  mutate(num_cols = str_count(Term_unique, ";") + 1) %>%
+  separate(Term_unique, into = paste0("Term_unique", 1:22), sep = ";", fill = "right")
+#22 columns of GOterms
+
+# Read the CSV file
+data <- read_csv("data.csv")
+
+# Separate the "Term" column by semi-colons and count the occurrences
+term_count <- pgenerosa_goslims %>%
+  filter(!is.na(Term)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term = trimws(Term)) %>% # Remove any leading/trailing white spaces
+  count(Term, sort = TRUE) # Count the occurrences and sort by descending count
+
+# Print the count of each term
+print(term_count)
+
+```
+
+
 #filter by tissue type
+not actually unique goslims, only unique to tissue types
 ```{r}
 tidy1<-pgenerosa_goslims_long %>%
   group_by(tissue) %>%
   filter(tpm > 0) 
 
-ctenidia<-pgenerosa_goslims %>%
+ctenidia<-distinct_terms2 %>%
   filter(ctenidia > 0 & gonad == 0 & heart == 0 & juvenile == 0 & larvae == 0)
 #340 obs (unique to ctenidia)
+
 write.csv(ctenidia, file="/Users/oliviacattau/Documents/GitHub/code-for-Pgenerosa/output/ctenidia_unique.csv")
 
 gonad<-pgenerosa_goslims %>%
