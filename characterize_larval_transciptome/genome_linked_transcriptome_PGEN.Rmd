@@ -50,17 +50,46 @@ goslims<-read.table(file="https://raw.githubusercontent.com/RobertsLab/code/mast
 ```{r}
 #from Mox blasting Manilla/Mercenaria on Pgen
 Manilla_Pgen<-read.table(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Manilla_Pgenenerosa_blastx.tab")
+Manila_Pgen_new <- separate(Manilla_Pgen, V2, into = c("gene", "Scaffold"), sep = "::")
+names(Manila_Pgen_new)[1]<-"Manila_gene"
+names(Manila_Pgen_new)[12]<-"e-value"
+#Manila_Pgen_new$accessions <- sub("\\.1$", "", Manila_Pgen_new$accessions)
 #761 shared genes
 
 Pgen_Manila<-read.table(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_Manilla_db_blastx.tab")
+Pgen_Manila_new<- separate(Pgen_Manila, V1, into = c("gene", "Scaffold"), sep = "::") 
+names(Pgen_Manila_new)[3]<-"Manila_gene"
+names(Pgen_Manila_new)[12]<-"e-value"
+#Pgen_Manila_new$accessions <-sub("\\.1$", "", Pgen_Manila_new$accessions)
 #657 shared genes
 
 Mercenaria_Pgen<-read.table(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Mercenaria_Pgenenerosa_blastx.tab")
+Mercenaria_Pgen_new<- separate(Mercenaria_Pgen, V2, into = c("gene", "Scaffold"), sep = "::") 
+names(Mercenaria_Pgen_new)[1]<-"Mercenaria_gene"
+names(Mercenaria_Pgen_new)[12]<-"e-value"
+#Mercenaria_Pgen_new$accessions <-sub("\\.1$", "", Mercenaria_Pgen_new$accessions)
+#Mercenaria_Pgen_new$accessions <-sub("\\.2$", "", Mercenaria_Pgen_new$accessions)
 #6,521 shared genes
 
 Pgen_Mercenaria<-read.table(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_Mercenaria_db_blastx.tab")
+Pgen_Mercenaria_new<- separate(Pgen_Mercenaria, V1, into = c("gene", "Scaffold"), sep = "::") 
+names(Pgen_Mercenaria_new)[3]<-"Mercenaria_gene"
+names(Pgen_Mercenaria_new)[12]<-"e-value"
+#Pgen_Mercenaria_new$accessions <-sub("\\.1$", "", Pgen_Mercenaria_new$accessions)
+#Pgen_Mercenaria_new$accessions <-sub("\\.2$", "", Pgen_Mercenaria_new$accessions)
 #5,099 shared 
+```
 
+#join clam transcriptome with goslims
+```{r}
+Manila_Pgen_goslims <- Manila_Pgen_new %>%
+left_join(goslims, by=c("gene"))
+Pgen_Manila_goslims <- Pgen_Manila_new %>%
+  left_join(goslims, by=c("gene"))
+Mercenaria_Pgen_goslims<- Mercenaria_Pgen_new %>%
+left_join(goslims, by=c("gene"))
+Pgen_Mercenaria_goslims<- Pgen_Mercenaria_new %>%
+left_join(goslims, by=c("gene"))
 ```
 
 #load genomes from blast output
@@ -69,7 +98,6 @@ Pgen_Mercenaria<-read.table(file="https://gannet.fish.washington.edu/gigas/data/
 
 
 ```
-
 
 #long format
 ```{r}
@@ -81,18 +109,17 @@ head(tidy_data_long)
 tidy_data_long$binary=ifelse(tidy_data_long$tpm > 0, 1, 0)
 ```
 
-
 #combine datasets into one gene annotation file***
 needs double checks
 ```{r}
 pgenerosa_complete<-salmonMatrix %>% 
   left_join(mappingMatrix, by=c("target_id")) 
 # could also do this with goslims
-pgenerosa_simple_goslims<-salmonMatrix %>% #best data set
+pgenerosa_simple_goslims<-salmonMatrix %>% #best pgenerosa data set
   left_join(goslims, by=c("gene"))
 pgenerosa_goslims<-pgenerosa_complete %>%
   left_join(goslims, by=c("gene"))
-pgenerosa_long<-tidy_data_long %>% #best long data set
+pgenerosa_long<-tidy_data_long %>% #best long pgenerosa data set
   left_join(pgenerosa_goslims, by=c("target_id"))
 ```
 
@@ -139,20 +166,85 @@ distinct_terms2<-distinct_goslims %>%
   mutate(num_cols = str_count(Term_unique, ";") + 1) %>%
   separate(Term_unique, into = paste0("Term_unique", 1:22), sep = ";", fill = "right")
 #22 columns of GOterms
+```
 
-# Read the CSV file
-data <- read_csv("data.csv")
-
+# Separate the Term columb by sem-colons to count occurances for table
+```{r}
+# For Pgenerosa alone
 # Separate the "Term" column by semi-colons and count the occurrences
-term_count <- pgenerosa_goslims %>%
-  filter(!is.na(Term)) %>% # Remove rows with missing (NA) values in the "Term" column
-  separate_rows(Term, sep = ";") %>% # Separate the "Term" column by semi-colons
-  mutate(Term = trimws(Term)) %>% # Remove any leading/trailing white spaces
-  count(Term, sort = TRUE) # Count the occurrences and sort by descending count
+term_count_Pgen <- distinct_goslims %>% #make sure you have removed duplicates values beforehand
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) # Count the occurrences and sort by descending count
 
 # Print the count of each term
-print(term_count)
+print(term_count_Pgen)
 
+
+#for Manila Clam
+# Separate the "Term" column by semi-colons and count the occurrences
+term_count_manila <- Manila_Pgen_goslims %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+  distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) # Count the occurrences and sort by descending count
+
+# Print the count of each term
+print(term_count_manila)
+
+# Manila Reverse
+term_count_manila_r <- Pgen_Manila_goslims %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+  distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique= trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) # Count the occurrences and sort by descending count
+
+# Print the count of each term
+print(term_count_manila_r)
+
+#for Mercenaria Clam
+# Separate the "Term" column by semi-colons and count the occurrences
+term_count_Mercenaria <- Mercenaria_Pgen_goslims %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+  distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) # Count the occurrences and sort by descending count
+
+# Print the count of each term
+print(term_count_Mercenaria)
+
+#for Mercenaria Clam reverse
+# Separate the "Term" column by semi-colons and count the occurrences
+term_count_Mercenaria_r <- Pgen_Mercenaria_goslims %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+  distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique= trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) # Count the occurrences and sort by descending count
+
+# Print the count of each term
+print(term_count_Mercenaria_r)
+
+#combine all 5 datasets
+term_count_all <- bind_rows(term_count_Pgen, term_count_manila, term_count_manila_r, term_count_Mercenaria, term_count_Mercenaria_r, .id = "transcriptome") 
+
+term_count_best <- term_count_all %>% 
+  mutate(transcriptome = ifelse(transcriptome == 1, "Pgenerosa", 
+                    ifelse(transcriptome == 2, "Manila",
+                           ifelse(transcriptome == 3, "Manila_r", 
+                                  ifelse(transcriptome == 4, "Mercenaria", 
+                                         ifelse(transcriptome == 5, "Mercenaria_r", transcriptome))))))
+
+#write dataframe into a CSV for table making
+write.csv(term_count_best, file="/Users/oliviacattau/Documents/GitHub/olivia-geoduck/output/unique_term_count_mult_clam_transcriptomes.csv")
 ```
 
 
@@ -248,4 +340,24 @@ sum(x3$x2) #34,947 --distinct mode
 x4<-comb_size(m2)
 x5<-as.data.frame(x4)
 sum(x5$x4) #450,489 --intersect mode
+```
+
+
+#Make stacked bar-plot for visualizing Unique Terms
+```{r}
+#filter Terms down a bit 
+
+terms_filtered <- term_count_best %>%
+  group_by(Term_unique) %>%
+  filter(n() >= 5) %>%
+  filter(!is.na("Terms_unique")) 
+
+terms_filtered_2<- terms_filtered %>%
+  filter(n >= 10) 
+
+
+stacked_barplot<-ggplot(terms_filtered_2, aes(x=transcriptome, y=n, fill=Term_unique))+geom_bar(stat = "identity")
+
+
+
 ```
