@@ -4,7 +4,7 @@ author: "Olivia Cattau"
 date: '2023-04-06'
 output: html_document
 ---
-```{r}
+```{r echo=FALSE}
 library(tidyverse)
 library(stringr)
 library(UpSetR)
@@ -21,6 +21,7 @@ library(tidyverse)
 library(magrittr) # needs to be run every time you start R and want to use %>%
 library(dplyr)   
 library(scales)
+library(unikn)
 ```
 
 #LOAD DATA
@@ -278,7 +279,7 @@ term_count_best <- term_count_all %>%
 #write dataframe into a CSV for table making
 write.csv(term_count_best, file="/Users/oliviacattau/Documents/GitHub/olivia-geoduck/output/unique_term_count_mult_clam_transcriptomes.csv")
 ```
-
+##normalize
 ```{r}
 #normalize by Pgen transcriptome
 sum_terms<- term_count_Pgen %>% #count terms in n 
@@ -385,19 +386,19 @@ row_indices_d<- which(species_count$all == 1)
 row_indices_e<- which(species_count$Pgen == 1)
 
 # extract corresponding row names
-genes_Mer_Man <- as.data.frame(rownames(count_df[row_indices_a, ])) 
+genes_Mer_Man <- as.data.frame(rownames(species_count[row_indices_a, ])) 
 names(genes_Mer_Man)[1]<-"gene"
 
-genes_Man_Pgen <- as.data.frame(rownames(count_df[row_indices_b, ])) 
+genes_Man_Pgen <- as.data.frame(rownames(species_count[row_indices_b, ])) 
 names(genes_Man_Pgen)[1]<-"gene"
 
-genes_Mer_Pgen <- as.data.frame(rownames(count_df[row_indices_c, ])) 
+genes_Mer_Pgen <- as.data.frame(rownames(species_count[row_indices_c, ])) 
 names(genes_Mer_Pgen)[1]<-"gene"
 
-genes_all <- as.data.frame(rownames(count_df[row_indices_d, ])) 
+genes_all <- as.data.frame(rownames(species_count[row_indices_d, ])) 
 names(genes_all)[1]<-"gene"
 
-genes_Pgen <- as.data.frame(rownames(count_df[row_indices_e, ])) 
+genes_Pgen <- as.data.frame(rownames(species_count[row_indices_e, ])) 
 names(genes_Pgen)[1]<-"gene"
 
 #goslims
@@ -521,39 +522,6 @@ Tis_normal<-grouped_data %>%
 write.csv(Tis_normal, file="/Users/oliviacattau/Documents/GitHub/olivia-geoduck/output/BEST_tissues_normalized.csv")
 ```
 
-##delete?
-```{r}
-#add pgen to tissue list with term_count_Pgen list
-
-tissue_Pgen_wide <- left_join(tissue_cleaned_wide, term_count_Pgen, by = "Term_unique") 
-names(tissue_Pgen_wide)[7]<-"Pgenerosa"
-
-#normalize n1 by geoduck in new column
-
-normalized_tissue<- tissue_Pgen_wide %>%
-  mutate(heart_n = heart/Pgenerosa) %>%
-  mutate(juvenile_n = juvenile/Pgenerosa) %>%
-  mutate(larvae_n = larvae/Pgenerosa) %>%
-  mutate(ctenidia_n = ctenidia/Pgenerosa) %>%
-  mutate(gonad_n = gonad/Pgenerosa)
-
-#take new dataset and convert to long format again 
-my_long_data <- normalized_tissue %>% 
-  pivot_longer(cols = c(2:7), names_to = "tissue", 
-  values_to = "n") %>%
-pivot_longer(cols = c(2:6),
-    names_to = "tissue_n",
-    values_to = "normalized")
-
-tissue_long<-my_long_data %>%
-  group_by(tissue_n) %>%
-  top_n(120, Term_unique) %>% #20x5=120
-  arrange(tissue, desc(normalized))%>%
-  distinct(Term_unique, .keep_all = TRUE)
-
-write.csv(tissue_long, file="/Users/oliviacattau/Documents/GitHub/olivia-geoduck/output/top20_tissues_normalized_120.csv")  
-
-```
 
 #filter by tissue type
 not actually unique goslims, only unique to tissue types
@@ -864,7 +832,7 @@ terms_filtered <- term_count_best %>%
   filter(n >= 10)
 
 #load top 20 hits from Github
-top20terms<-read.csv(file="https://raw.githubusercontent.com/course-fish546-2023/olivia-geoduck/main/output/top20terms.csv?token=GHSAT0AAAAAAB64XHVOTPYLGDRNFYRB7QQIZCG7G4A")
+top20terms<-read.csv(file="https://raw.githubusercontent.com/course-fish546-2023/olivia-geoduck/main/output/top20terms.csv?token=GHSAT0AAAAAAB64XHVOCLUMSKFNBQEYT6FWZCIKZCA")
 
 compairative_transcriptomes<-top20terms %>%
   filter(transcriptome != "Pgenerosa") %>%
@@ -893,24 +861,22 @@ heatmap2<-ggplot(top20terms, aes(x=transcriptome, y=Term_unique, fill=n))+geom_t
 
 heatmap3<-ggplot(compairative_transcriptomes, aes(x=transcriptome, y=Term_unique, fill=n))+geom_tile()+theme_bw() + scale_fill_gradient(low="#c2f9ff", high="#003460")
 
-#heatmap for tissue types not normalized
-heatmap4<-ggplot(tissue_cleaned, aes(x=tissue, y=Term_unique, fill=n))+geom_tile()+theme_bw()+ scale_fill_gradient(low="#c2f9ff", high="#003460")
-
-#heatmaps for tissue types normalized 
-print(my_long_data)
-
-heatmap5<- ggplot(my_long_data, aes(tissue_n, y=Term_unique, fill=normalized))+geom_tile()+theme_bw()+ scale_fill_gradient(low="#c2f9ff", high="#003460")
-
-
-heatmap6<- ggplot(tissue_long, aes(tissue_n, y=Term_unique, fill=normalized))+geom_tile()+theme_bw()+ scale_fill_gradient(low="#c2f9ff", high="#003460")
-
 heatmap7<- ggplot(tissues2, aes(x=tissues, y=Term_unique, fill=n))+geom_tile()+theme_bw()+ scale_fill_gradient(low="#c2f9ff", high="#003460")+theme(axis.text.x = element_text(angle = 45, hjust = 1) )
 
-heatmap8<-ggplot(Tis_normal, aes(tissue, y=Term_unique, fill=normalized))+geom_tile()+theme_bw()+theme(axis.text.x = element_text(angle = 45, hjust = 1) )#need to set color wheel to white = 1 and red = min and blue = max
+Tis_normal_2<-Tis_normal %>%
+  filter(Term_unique != "NA")
+
+heatmap8<-ggplot(Tis_normal_2, aes(tissue, y=Term_unique, fill=normalized))+geom_tile()+theme_bw()+theme(axis.text.x = element_text(angle = 45, hjust = 1) )+ scale_fill_gradient2(low = "yellow", mid = "white", high = "red", midpoint = 0.9, na.value = "grey50")#need to set color wheel to white = 1 and red = min and blue = max
 
 p3 <- usecol(c("#E77500", "white", "black"), n = 7)
 
 heatmap9<-ggplot(Tis_normal, aes(tissue, y=Term_unique, fill=log_scale))+geom_tile(color="white")+  scale_fill_gradient2(low = "red", mid = "white", high = "blue", midpoint = 0, na.value = "grey50")+theme_bw()+theme(axis.text.x = element_text(angle = 45, hjust = 1) )#need to set color wheel to white = 1 and red = min and blue = max
+
+species_normal_2<-species_normal %>%
+  filter(Term_unique != "NA")%>%
+  filter(transcriptome == "Manila_r" | transcriptome == "Mercenaria_r")
+
+heatmap10<-ggplot(species_normal_2, aes(transcriptome, y=Term_unique, fill=normalized))+geom_tile(color="white")+  scale_fill_gradient2(low = "red", mid = "white", high = "blue", midpoint = 1, na.value = "grey50")+theme_bw()+theme(axis.text.x = element_text(angle = 45, hjust = 1) )
 
 #barplot?
 
