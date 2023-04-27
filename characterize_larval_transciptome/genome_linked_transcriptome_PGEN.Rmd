@@ -815,6 +815,18 @@ gl_count_unique <- goslims_genes_gl %>% # remove duplicates from Term column and
   count(Term_unique, sort = TRUE) %>% # Count the occurrences and sort by descending count 
   mutate(count_unique = n()-1, tissues= "gonad-larvae") #count genes with GOslims and remove 1 (for NAs)
 
+#term count Juv only
+juv_count_unique <- juvenile %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+  #distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) %>% # Count the occurrences and sort by descending count 
+  mutate(count_unique = n()-1, tissues= "juvenile") #count genes with GOslims and remove 1 (for NAs)
+
+write.csv(juv_count_unique, file="/Users/oliviacattau/Documents/GitHub/olivia-geoduck/data/juv_count_unique.csv")
+
 #combine into one DF
 unique_overlapping_genes<-bind_rows(hg_count_unique, hc_count_unique, cg_count_unique, lj_count_unique, cj_count_unique, hj_count_unique, gj_count_unique, cl_count_unique, hl_count_unique, gl_count_unique)
 
