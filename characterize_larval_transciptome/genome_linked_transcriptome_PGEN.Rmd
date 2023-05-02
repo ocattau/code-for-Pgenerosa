@@ -523,7 +523,7 @@ write.csv(Tis_normal, file="/Users/oliviacattau/Documents/GitHub/olivia-geoduck/
 ```
 
 
-#filter by tissue type
+##filter by tissue type
 not actually unique goslims, only unique to tissue types
 ```{r}
 tidy1<-pgenerosa_goslims_long %>%
@@ -532,26 +532,31 @@ tidy1<-pgenerosa_goslims_long %>%
 
 ctenidia<-pgenerosa_goslims %>%
   filter(ctenidia > 0 & gonad == 0 & heart == 0 & juvenile == 0 & larvae == 0)
+count(ctenidia)
 #340 obs (unique to ctenidia)
 write.csv(ctenidia, file="/Users/oliviacattau/Documents/GitHub/code-for-Pgenerosa/output/ctenidia_unique.csv")
 
 gonad<-pgenerosa_goslims %>%
   filter(gonad > 0 & ctenidia == 0 & heart == 0 & juvenile == 0 & larvae == 0)
+count(gonad)
 #119 obs (unique to gonad)
 write.csv(gonad, file="/Users/oliviacattau/Documents/GitHub/code-for-Pgenerosa/output/gonad_unique.csv")
 
 heart<-pgenerosa_goslims %>%
   filter(heart > 0 & ctenidia == 0 & gonad == 0 & juvenile == 0 & larvae == 0)
+count(heart)
 #371 obs (unique to heart)
 write.csv(heart, file="/Users/oliviacattau/Documents/GitHub/code-for-Pgenerosa/output/heart_unique.csv")
 
 juvenile<-pgenerosa_goslims %>%
   filter(juvenile > 0 & ctenidia == 0 & heart == 0 & gonad == 0 & larvae == 0)
+count(juvenile)
 #2,180 obs (unique to juvenile alone)
 write.csv(juvenile, file="/Users/oliviacattau/Documents/GitHub/code-for-Pgenerosa/output/juvenile_unique.csv")
 
 larvae<-pgenerosa_goslims %>%
   filter(larvae > 0 & ctenidia == 0 & heart == 0 & gonad == 0 & juvenile == 0)
+count(larvae)
 #868 obs (unique to larvae alone)
 write.csv(larvae, file="/Users/oliviacattau/Documents/GitHub/code-for-Pgenerosa/output/larvae_unique.csv")
 
@@ -564,8 +569,60 @@ juvorlarv<-pgenerosa_goslims %>%
 all_unique<-pgenerosa_goslims %>%
    filter(ctenidia > 0 & gonad > 0 & heart > 0 & juvenile > 0 & larvae > 0)
 write.csv(all_unique, file="/Users/oliviacattau/Documents/GitHub/code-for-Pgenerosa/output/all_unique.csv")
+```
 
-#
+## count GOterms for individual tissues
+```{r}
+gonad
+larvae
+heart
+ctenidia
+juvenile
+
+gonad_count_unique <- gonad %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% # distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) %>% # Count the occurrences and sort by descending count 
+  mutate(count_unique = n()-1, tissue= "gonad")
+
+larvae_count_unique <- larvae %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% # distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) %>% # Count the occurrences and sort by descending count 
+  mutate(count_unique = n()-1, tissue= "larvae")
+
+heart_count_unique <- heart %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% # distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) %>% # Count the occurrences and sort by descending count 
+  mutate(count_unique = n()-1, tissue= "heart")
+
+ctenidia_count_unique <- ctenidia %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% # distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) %>% # Count the occurrences and sort by descending count 
+  mutate(count_unique = n()-1, tissue= "ctenidia")
+
+juvenile_count_unique <- juvenile %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% # distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) %>% # Count the occurrences and sort by descending count 
+  mutate(count_unique = n()-1, tissue= "juvenile")
+
+tissue_all_unique_genes_GOterms<-rbind(heart_count_unique, gonad_count_unique, ctenidia_count_unique, larvae_count_unique, juvenile_count_unique)
+
+write.csv(tissue_all_unique_genes_GOterms, file="/Users/oliviacattau/Documents/GitHub/olivia-geoduck/output/BEST_tissue_unique_GOterms.csv")
+
 ```
 
 #organize data for UpSet plot

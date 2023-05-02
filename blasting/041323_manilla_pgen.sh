@@ -1,5 +1,5 @@
 #!/bin/bash
-## 04.12.23 blast p.generosa against mercenaria mercenaria on MOX
+## 04.13.23 blast p.generosa against mercenaria mercenaria on MOX
 #SBATCH --job-name=blasting_mercenaria_on_pgen
 #SBATCH --account=srlab
 #SBATCH --partition=srlab
