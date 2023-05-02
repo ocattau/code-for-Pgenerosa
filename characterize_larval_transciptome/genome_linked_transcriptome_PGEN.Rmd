@@ -49,7 +49,7 @@ goslims<-read.csv(file="https://raw.githubusercontent.com/RobertsLab/code/master
 #14,672
 ```
 
-##download other clam species
+##download other trasncriptome from clam species
 ```{r}
 #from Mox blasting Manilla/Mercenaria on Pgen
 Manilla_Pgen<-read.table(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Manilla_Pgenenerosa_blastx.tab")
@@ -63,6 +63,7 @@ Manila_Pgen_clean <- select(Manila_Pgen_new, -c(3:11, 13))
 
 #761 shared genes
 
+#best Manila Transcriptome
 Pgen_Manila<-read.table(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_Manilla_db_blastx.tab")
 Pgen_Manila_new<- separate(Pgen_Manila, V1, into = c("gene", "Scaffold"), sep = "::") 
 names(Pgen_Manila_new)[3]<-"Manila_gene"
@@ -82,6 +83,7 @@ Mercenaria_Pgen_clean <- select(Mercenaria_Pgen_new, -c(3:11, 13))
 #Mercenaria_Pgen_new$accessions <-sub("\\.2$", "", Mercenaria_Pgen_new$accessions)
 #6,521 shared genes
 
+#best Mercenaria transcriptome
 Pgen_Mercenaria<-read.table(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_Mercenaria_db_blastx.tab")
 Pgen_Mercenaria_new<- separate(Pgen_Mercenaria, V1, into = c("gene", "Scaffold"), sep = "::") 
 names(Pgen_Mercenaria_new)[3]<-"Mercenaria_gene"
@@ -96,6 +98,8 @@ Pgen_Mercenaria_clean <- select(Pgen_Mercenaria_new, -c(2, 4:11, 13))
 ###needs work
 ```{r}
 Mercenaria_genome<-read.csv(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_Mercenaria_db_genome_blastn.tab", sep = '\t', header = FALSE)
+
+Quadrangularis_genome<-read.csv(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_quadrangularis_db_genome_blastn.tab", sep = '\t', header = FALSE)
 
 ```
 
