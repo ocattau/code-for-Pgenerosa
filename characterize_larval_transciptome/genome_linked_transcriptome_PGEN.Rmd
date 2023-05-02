@@ -95,8 +95,7 @@ Pgen_Mercenaria_clean <- select(Pgen_Mercenaria_new, -c(2, 4:11, 13))
 ##load genomes from blast output
 ###needs work
 ```{r}
-
-
+Mercenaria_genome<-read.csv(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_Mercenaria_db_genome_blastn.tab", sep = '\t', header = FALSE)
 
 ```
 
