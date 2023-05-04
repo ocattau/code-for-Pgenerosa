@@ -16,14 +16,14 @@
 #SBATCH --chdir=/gscratch/srlab/ocattau
 
 /gscratch/srlab/programs/ncbi-blast-2.8.1+/bin/makeblastdb \
--in /gscratch/srlab/ocattau/clamdata/ncbi_dataset/data/ncbi_dataset/data/GCA_026571515.1/GCA_026571515.1_ASM2657151v1_genomic.fna \
+-in /gscratch/srlab/ocattau/clamdata/GCA_014843695.1_ASM1484369v1_genomic.fna \
 -dbtype nucl \
--out /gscratch/srlab/ocattau/clamdata/blastdb2/manila_db_genome
+-out /gscratch/srlab/ocattau/clamdata/blastdb2/marissinca_db_genome
 
 /gscratch/srlab/programs/ncbi-blast-2.8.1+/bin/blastn \
 -query /gscratch/srlab/ocattau/clamdata/Panopea-generosa-v1.0.a4.gene.fasta \
--db /gscratch/srlab/ocattau/clamdata/blastdb2/manila_db_genome \
--out /gscratch/srlab/ocattau/clamdata/blast_output/Pgenerosa_manila_db_genome_blastn.tab \
+-db /gscratch/srlab/ocattau/clamdata/blastdb2/marissinca_db_genome \
+-out /gscratch/srlab/ocattau/clamdata/blast_output/Pgenerosa_marissinsa_db_genome_blastn.tab \
 -evalue 1E-20 \
 -num_threads 30 \
 -max_target_seqs 1 \

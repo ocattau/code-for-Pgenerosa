@@ -103,6 +103,8 @@ Quadrangularis_genome<-read.csv(file="https://gannet.fish.washington.edu/gigas/d
 
 Manila_genome<-read.csv(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_manila_db_genome_blastn.tab", sep = '\t', header = FALSE)
 
+
+
 ```
 
 
