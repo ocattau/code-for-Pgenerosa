@@ -6,7 +6,7 @@
 ## Nodes
 #SBATCH --nodes=1
 ## Walltime (days-hours:minutes:seconds format)
-#SBATCH --time=05-00:00:00
+#SBATCH --time=03-00:00:00
 ## Memory per node
 #SBATCH --mem=500G
 ##turn on e-mail notification
@@ -16,7 +16,7 @@
 #SBATCH --chdir=/gscratch/srlab/ocattau
 
 /gscratch/srlab/programs/ncbi-blast-2.8.1+/bin/makeblastdb \
--in /gscratch/srlab/ocattau/clamdata/GCA_014843695.1_ASM1484369v1_genomic.fna \
+-in /gscratch/srlab/ocattau/clamdata/ncbi_dataset/data/ncbi_dataset/data/GCA_014843695.1/GCA_014843695.1_ASM1484369v1_genomic.fna \
 -dbtype nucl \
 -out /gscratch/srlab/ocattau/clamdata/blastdb2/marissinca_db_genome
 
