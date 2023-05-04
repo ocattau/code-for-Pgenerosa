@@ -101,6 +101,8 @@ Mercenaria_genome<-read.csv(file="https://gannet.fish.washington.edu/gigas/data/
 
 Quadrangularis_genome<-read.csv(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_quadrangularis_db_genome_blastn.tab", sep = '\t', header = FALSE)
 
+Manila_genome<-read.csv(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_manila_db_genome_blastn.tab", sep = '\t', header = FALSE)
+
 ```
 
 
