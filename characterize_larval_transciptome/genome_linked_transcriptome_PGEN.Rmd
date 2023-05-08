@@ -103,7 +103,9 @@ Quadrangularis_genome<-read.csv(file="https://gannet.fish.washington.edu/gigas/d
 
 Manila_genome<-read.csv(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_manila_db_genome_blastn.tab", sep = '\t', header = FALSE)
 
-Marissincia_genome<-read.csv(file="", sep = '\t', header = FALSE)
+Marissincia_genome<-read.csv(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_marissinsa_db_genome_blastn.tab", sep = '\t', header = FALSE)
+
+Solida_genome<-read.csv(file="", sep = '\t', header = FALSE)
 ```
 #get count data for Column 2
 #get summary data for genomes
