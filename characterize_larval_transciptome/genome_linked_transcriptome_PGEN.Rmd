@@ -111,8 +111,8 @@ Solida_genome<-read.csv(file="https://gannet.fish.washington.edu/gigas/data/p.ge
 ```{r}
 #Mercenaria
 Mercenaria_new <- separate(Mercenaria_genome, V1, into = c("gene", "Scaffold"), sep = "::")
-names(Marissincia_new)[1]<-"gene"
-names(Marissincia_new)[12]<-"e-value"
+names(Mercenaria_new)[1]<-"gene"
+names(Mercenaria_new)[12]<-"e-value"
 
 Mercenaria_summary <- Mercenaria_new %>%
   mutate(Marissincia_genes = lapply(strsplit(as.character(V2), ";"), function(Marissincia_genes) paste0(unique(Marissincia_genes), collapse = ";"))) %>% 
@@ -942,7 +942,6 @@ write.csv(juv_count_unique, file="/Users/oliviacattau/Documents/GitHub/olivia-ge
 #combine into one DF
 unique_overlapping_genes<-bind_rows(hg_count_unique, hc_count_unique, cg_count_unique, lj_count_unique, cj_count_unique, hj_count_unique, gj_count_unique, cl_count_unique, hl_count_unique, gl_count_unique)
 
-write.csv(unique_overlapping_genes, file="/Users/oliviacattau/Documents/GitHub/olivia-geoduck/output/overlapping_tissues_gene_list_counts.csv")
 ```
 
 #Make stacked bar-plot for visualizing Unique Terms
@@ -956,7 +955,7 @@ terms_filtered <- term_count_best %>%
   filter(n >= 10)
 
 #load top 20 hits from Github
-top20terms<-read.csv(file="https://raw.githubusercontent.com/course-fish546-2023/olivia-geoduck/main/output/top20terms.csv?token=GHSAT0AAAAAAB64XHVOCLUMSKFNBQEYT6FWZCIKZCA")
+top20terms<-read.csv(file="https://raw.githubusercontent.com/course-fish546-2023/olivia-geoduck/main/output/tables/top20terms.csv")
 
 compairative_transcriptomes<-top20terms %>%
   filter(transcriptome != "Pgenerosa") %>%
