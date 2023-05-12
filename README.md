@@ -1,3 +1,6 @@
+# Research Report
+https://rpubs.com/ocattau/1041088
+
 ## Steps:
 
 1. Gather Pgenerosa Transcriptome and blast against NCBI swiss prot
