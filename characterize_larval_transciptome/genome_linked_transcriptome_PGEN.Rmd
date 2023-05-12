@@ -155,6 +155,11 @@ Solida_summary <- Solida_new%>%
   distinct(genes, .keep_all = TRUE) 
 ```
 
+## make tables for clam genomes
+```{r}
+clam_genomes<-bind_rows(lst(Solida_new, Marissincia_new, Mercenaria_new, Manila_new, Quadrangularis_new), .id = "clam")
+```
+
 #JOIN DATA
 ##combine all clams for scatterplot by e-value
 ```{r}

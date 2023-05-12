@@ -376,6 +376,9 @@ add comparative species analysis with Mercenaria and Manila
 transcriptomes against geoduck transcriptome</li>
 <li><input type="checkbox" disabled checked></input>
 make heatmaps to visualize overexpressed and underexpressed genes</li>
+<li><input type="checkbox" disabled checked></input>
+add comoparative genome analysis with Mercenaria, Manila,
+Quadrangularis, Marissincia, and Solida clams</li>
 </ul>
 </div>
 <div id="what-is-a-geoduck" class="section level2">
@@ -1022,6 +1025,171 @@ knitr::kable(species_normal[1:5, 1:5],caption=&quot;Species Normalized by Pgener
 </tbody>
 </table>
 </div>
+<div id="download-clam-genomes" class="section level1">
+<h1>Download Clam Genomes</h1>
+<div id="load-genomes-from-blast-output" class="section level2">
+<h2>load genomes from blast output</h2>
+<pre class="r"><code>Mercenaria_genome&lt;-read.csv(file=&quot;https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_Mercenaria_db_genome_blastn.tab&quot;, sep = &#39;\t&#39;, header = FALSE)
+
+Quadrangularis_genome&lt;-read.csv(file=&quot;https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_quadrangularis_db_genome_blastn.tab&quot;, sep = &#39;\t&#39;, header = FALSE)
+
+Manila_genome&lt;-read.csv(file=&quot;https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_manila_db_genome_blastn.tab&quot;, sep = &#39;\t&#39;, header = FALSE)
+
+Marissincia_genome&lt;-read.csv(file=&quot;https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_marissinsa_db_genome_blastn.tab&quot;, sep = &#39;\t&#39;, header = FALSE)
+
+Solida_genome&lt;-read.csv(file=&quot;https://gannet.fish.washington.edu/gigas/data/p.generosa/solida_db_genome_blastn.tab&quot;, sep = &#39;\t&#39;, header = FALSE)</code></pre>
+<div id="get-summary-data-for-genomes" class="section level3">
+<h3>get summary data for genomes</h3>
+<pre class="r"><code>#Mercenaria
+Mercenaria_new &lt;- separate(Mercenaria_genome, V1, into = c(&quot;gene&quot;, &quot;Scaffold&quot;), sep = &quot;::&quot;)
+names(Mercenaria_new)[1]&lt;-&quot;gene&quot;
+names(Mercenaria_new)[12]&lt;-&quot;e-value&quot;
+
+Mercenaria_summary &lt;- Mercenaria_new %&gt;%
+  mutate(Marissincia_genes = lapply(strsplit(as.character(V2), &quot;;&quot;), function(Marissincia_genes) paste0(unique(Marissincia_genes), collapse = &quot;;&quot;))) %&gt;% 
+  distinct(Marissincia_genes, .keep_all = TRUE) 
+
+#Quadrangularis
+Quadrangularis_new &lt;- separate(Quadrangularis_genome, V1, into = c(&quot;gene&quot;, &quot;Scaffold&quot;), sep = &quot;::&quot;)
+names(Quadrangularis_new)[1]&lt;-&quot;gene&quot;
+names(Quadrangularis_new)[12]&lt;-&quot;e-value&quot;
+
+Quadrangularis_summary &lt;- Quadrangularis_new %&gt;%
+  mutate(genes = lapply(strsplit(as.character(V2), &quot;;&quot;), function(genes) paste0(unique(genes), collapse = &quot;;&quot;))) %&gt;% 
+  distinct(genes, .keep_all = TRUE) 
+
+#Manila 
+Manila_new &lt;- separate(Manila_genome, V1, into = c(&quot;gene&quot;, &quot;Scaffold&quot;), sep = &quot;::&quot;)
+names(Manila_new)[1]&lt;-&quot;gene&quot;
+names(Manila_new)[12]&lt;-&quot;e-value&quot;
+
+Manila_summary &lt;- Manila_new%&gt;%
+  mutate(genes = lapply(strsplit(as.character(V2), &quot;;&quot;), function(genes) paste0(unique(genes), collapse = &quot;;&quot;))) %&gt;% 
+  distinct(genes, .keep_all = TRUE) 
+
+#Marissincia
+Marissincia_new &lt;- separate(Marissincia_genome, V1, into = c(&quot;gene&quot;, &quot;Scaffold&quot;), sep = &quot;::&quot;)
+names(Marissincia_new)[1]&lt;-&quot;gene&quot;
+names(Marissincia_new)[12]&lt;-&quot;e-value&quot;
+
+Marissincia_summary &lt;- Marissincia_new %&gt;%
+  mutate(Marissincia_genes = lapply(strsplit(as.character(V2), &quot;;&quot;), function(Marissincia_genes) paste0(unique(Marissincia_genes), collapse = &quot;;&quot;))) %&gt;% 
+  distinct(Marissincia_genes, .keep_all = TRUE) 
+
+#Solida
+Solida_new &lt;- separate(Solida_genome, V1, into = c(&quot;gene&quot;, &quot;Scaffold&quot;), sep = &quot;::&quot;)
+names(Solida_new)[1]&lt;-&quot;gene&quot;
+names(Solida_new)[12]&lt;-&quot;e-value&quot;
+
+Solida_summary &lt;- Solida_new%&gt;%
+  mutate(genes = lapply(strsplit(as.character(V2), &quot;;&quot;), function(genes) paste0(unique(genes), collapse = &quot;;&quot;))) %&gt;% 
+  distinct(genes, .keep_all = TRUE) 
+
+knitr::kable(head(Solida_summary[1:5, 1:5]), &quot;simple&quot;)</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">gene</th>
+<th align="left">Scaffold</th>
+<th align="left">V2</th>
+<th align="right">V3</th>
+<th align="right">V4</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">PGEN_.00g000060</td>
+<td align="left">Scaffold_01:70713-81099</td>
+<td align="left">OX365947.1</td>
+<td align="right">74.279</td>
+<td align="right">416</td>
+</tr>
+<tr class="even">
+<td align="left">PGEN_.00g000270</td>
+<td align="left">Scaffold_01:344820-379444</td>
+<td align="left">OX365949.1</td>
+<td align="right">75.163</td>
+<td align="right">306</td>
+</tr>
+<tr class="odd">
+<td align="left">PGEN_.00g000320</td>
+<td align="left">Scaffold_01:571666-599482</td>
+<td align="left">OX365950.1</td>
+<td align="right">79.545</td>
+<td align="right">220</td>
+</tr>
+<tr class="even">
+<td align="left">PGEN_.00g000670</td>
+<td align="left">Scaffold_01:1389639-1400328</td>
+<td align="left">OX365948.1</td>
+<td align="right">87.857</td>
+<td align="right">140</td>
+</tr>
+<tr class="odd">
+<td align="left">PGEN_.00g001410</td>
+<td align="left">Scaffold_01:2961919-2993436</td>
+<td align="left">OX365952.1</td>
+<td align="right">79.126</td>
+<td align="right">206</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="make-tables-for-clam-genomes" class="section level2">
+<h2>make tables for clam genomes</h2>
+<pre class="r"><code>clam_genomes&lt;-bind_rows(lst(Solida_new, Marissincia_new, Mercenaria_new, Manila_new, Quadrangularis_new), .id = &quot;clam&quot;)
+
+knitr::kable(head(clam_genomes[1:5, 1:5]), &quot;simple&quot;)</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">clam</th>
+<th align="left">gene</th>
+<th align="left">Scaffold</th>
+<th align="left">V2</th>
+<th align="right">V3</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Solida_new</td>
+<td align="left">PGEN_.00g000060</td>
+<td align="left">Scaffold_01:70713-81099</td>
+<td align="left">OX365947.1</td>
+<td align="right">74.279</td>
+</tr>
+<tr class="even">
+<td align="left">Solida_new</td>
+<td align="left">PGEN_.00g000270</td>
+<td align="left">Scaffold_01:344820-379444</td>
+<td align="left">OX365949.1</td>
+<td align="right">75.163</td>
+</tr>
+<tr class="odd">
+<td align="left">Solida_new</td>
+<td align="left">PGEN_.00g000300</td>
+<td align="left">Scaffold_01:503707-557915</td>
+<td align="left">OX365947.1</td>
+<td align="right">83.648</td>
+</tr>
+<tr class="even">
+<td align="left">Solida_new</td>
+<td align="left">PGEN_.00g000320</td>
+<td align="left">Scaffold_01:571666-599482</td>
+<td align="left">OX365950.1</td>
+<td align="right">79.545</td>
+</tr>
+<tr class="odd">
+<td align="left">Solida_new</td>
+<td align="left">PGEN_.00g000670</td>
+<td align="left">Scaffold_01:1389639-1400328</td>
+<td align="left">OX365948.1</td>
+<td align="right">87.857</td>
+</tr>
+</tbody>
+</table>
+</div>
 <div id="tissues" class="section level2">
 <h2>TISSUES</h2>
 <ul>
@@ -1208,6 +1376,7 @@ analysis, update methods and results in geoduck paper</p>
 <p>Week 8 -</p>
 <p>Week 9 -</p>
 <p>Week 10 - hopefully nothing, prepare for graduation!</p>
+</div>
 </div>
 
 

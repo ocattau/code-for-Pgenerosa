@@ -12,6 +12,7 @@ highlight: breezedark
 - [x] annotate geoduck tissue transcriptome (gonad, ctenidia, heart, juvenile, larvae)
 - [x] add comparative species analysis with Mercenaria and Manila transcriptomes against geoduck transcriptome
 - [x] make heatmaps to visualize overexpressed and underexpressed genes
+- [x] add comoparative genome analysis with Mercenaria, Manila, Quadrangularis, Marissincia, and Solida clams
 
 ```{r setup, include=FALSE} 
 knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
@@ -317,6 +318,78 @@ filtered_data1 <- term_count_best %>%
 knitr::kable(species_normal[1:5, 1:5],caption="Species Normalized by Pgenerosa Transcriptome")
 
 ```
+
+# Download Clam Genomes
+## load genomes from blast output
+```{r}
+Mercenaria_genome<-read.csv(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_Mercenaria_db_genome_blastn.tab", sep = '\t', header = FALSE)
+
+Quadrangularis_genome<-read.csv(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_quadrangularis_db_genome_blastn.tab", sep = '\t', header = FALSE)
+
+Manila_genome<-read.csv(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_manila_db_genome_blastn.tab", sep = '\t', header = FALSE)
+
+Marissincia_genome<-read.csv(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_marissinsa_db_genome_blastn.tab", sep = '\t', header = FALSE)
+
+Solida_genome<-read.csv(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/solida_db_genome_blastn.tab", sep = '\t', header = FALSE)
+```
+
+### get summary data for genomes
+```{r}
+#Mercenaria
+Mercenaria_new <- separate(Mercenaria_genome, V1, into = c("gene", "Scaffold"), sep = "::")
+names(Mercenaria_new)[1]<-"gene"
+names(Mercenaria_new)[12]<-"e-value"
+
+Mercenaria_summary <- Mercenaria_new %>%
+  mutate(Marissincia_genes = lapply(strsplit(as.character(V2), ";"), function(Marissincia_genes) paste0(unique(Marissincia_genes), collapse = ";"))) %>% 
+  distinct(Marissincia_genes, .keep_all = TRUE) 
+
+#Quadrangularis
+Quadrangularis_new <- separate(Quadrangularis_genome, V1, into = c("gene", "Scaffold"), sep = "::")
+names(Quadrangularis_new)[1]<-"gene"
+names(Quadrangularis_new)[12]<-"e-value"
+
+Quadrangularis_summary <- Quadrangularis_new %>%
+  mutate(genes = lapply(strsplit(as.character(V2), ";"), function(genes) paste0(unique(genes), collapse = ";"))) %>% 
+  distinct(genes, .keep_all = TRUE) 
+
+#Manila 
+Manila_new <- separate(Manila_genome, V1, into = c("gene", "Scaffold"), sep = "::")
+names(Manila_new)[1]<-"gene"
+names(Manila_new)[12]<-"e-value"
+
+Manila_summary <- Manila_new%>%
+  mutate(genes = lapply(strsplit(as.character(V2), ";"), function(genes) paste0(unique(genes), collapse = ";"))) %>% 
+  distinct(genes, .keep_all = TRUE) 
+
+#Marissincia
+Marissincia_new <- separate(Marissincia_genome, V1, into = c("gene", "Scaffold"), sep = "::")
+names(Marissincia_new)[1]<-"gene"
+names(Marissincia_new)[12]<-"e-value"
+
+Marissincia_summary <- Marissincia_new %>%
+  mutate(Marissincia_genes = lapply(strsplit(as.character(V2), ";"), function(Marissincia_genes) paste0(unique(Marissincia_genes), collapse = ";"))) %>% 
+  distinct(Marissincia_genes, .keep_all = TRUE) 
+
+#Solida
+Solida_new <- separate(Solida_genome, V1, into = c("gene", "Scaffold"), sep = "::")
+names(Solida_new)[1]<-"gene"
+names(Solida_new)[12]<-"e-value"
+
+Solida_summary <- Solida_new%>%
+  mutate(genes = lapply(strsplit(as.character(V2), ";"), function(genes) paste0(unique(genes), collapse = ";"))) %>% 
+  distinct(genes, .keep_all = TRUE) 
+
+knitr::kable(head(Solida_summary[1:5, 1:5]), "simple")
+```
+
+## make tables for clam genomes
+```{r}
+clam_genomes<-bind_rows(lst(Solida_new, Marissincia_new, Mercenaria_new, Manila_new, Quadrangularis_new), .id = "clam")
+
+knitr::kable(head(clam_genomes[1:5, 1:5]), "simple")
+```
+
 
 
 ## TISSUES
