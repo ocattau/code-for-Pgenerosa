@@ -24,8 +24,8 @@ library(scales)
 library(unikn)
 ```
 
-#LOAD DATA
-##load new genome linked transcriptome PGEN
+# LOAD DATA
+## load new genome linked transcriptome PGEN
 ```{r}
 salmonMatrix<-read.table(file="https://raw.githubusercontent.com/sr320/paper-geoduck-gene-exp/main/data/salmon.merged.gene_tpm.tsv", header=TRUE, sep = '\t')
 names(salmonMatrix)[1]<-"target_id"

@@ -1,0 +1,430 @@
+---
+title: "Geoduck Research Project Report"
+author: "Olivia"
+date: "2023-05-12"
+output: html_document
+theme: journal
+highlight: breezedark
+---
+
+## Project Goals
+- [x] annotate geoduck transcriptome
+- [x] annotate geoduck tissue transcriptome (gonad, ctenidia, heart, juvenile, larvae)
+- [x] add comparative species analysis with Mercenaria and Manila transcriptomes against geoduck transcriptome
+- [x] make heatmaps to visualize overexpressed and underexpressed genes
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+```
+
+```{r echo=FALSE}
+library(tidyverse)
+library(stringr)
+library(UpSetR)
+library(devtools)
+library(BiocManager)
+library(tidyr)
+library(UpSetR)
+library(ComplexHeatmap)
+library(tidyverse)
+library(magrittr)
+library(dplyr)   
+library(scales)
+library(knitr)
+```
+
+## What is a Geoduck?
+<img src="https://raw.githubusercontent.com/course-fish546-2023/olivia-classwork/main/Holding-Geoduck-1-770x1024.jpeg">
+
+## Load Geoduck Transcriptome
+```{r}
+salmonMatrix<-read.table(file="https://raw.githubusercontent.com/sr320/paper-geoduck-gene-exp/main/data/salmon.merged.gene_tpm.tsv", header=TRUE, sep = '\t')
+names(salmonMatrix)[1]<-"target_id"
+names(salmonMatrix)[2]<-"gene"
+
+goslims<-read.csv(file="https://raw.githubusercontent.com/RobertsLab/code/master/r_projects/sam/20230328-pgen-gene_annotation-update/outputs/02-goslim-mapping/20230329-pgen-annotations-SwissProt-GO-BP_GOslim.tab", header=TRUE, sep = '\t')
+
+### <b> 
+pgenerosa_simple_goslims<-salmonMatrix %>% 
+  left_join(goslims, by=c("gene"))
+### </b>
+
+knitr::kable(head(pgenerosa_simple_goslims[1:5, 1:5]), "simple")
+#kable(head(pgenerosa_simple_goslims, n = 5))
+#kable(pgenerosa_simple_goslims[1:5,], caption = "Pgenerosa Transcriptome")
+```
+
+```{r echo=FALSE, cache=TRUE}
+## turn SalmonMatrix into long format
+tidy_data<-salmonMatrix
+head(tidy_data)
+tidy_data_long<-tidy_data %>%
+  gather(key="tissue", value="tpm", ctenidia:larvae) #name key as time, name value as tpm, gather columns heart:larvae, converts wide to long format
+names(tidy_data_long)[2]<-"gene"
+head(tidy_data_long)
+tidy_data_long$binary=ifelse(tidy_data_long$tpm > 0, 1, 0)
+
+#add goslims below
+pgenerosa_long<-tidy_data_long %>% #best long pgenerosa data set
+  left_join(goslims, by=c("gene"))
+knitr::kable(head(pgenerosa_long[1:6, 1:6]), "simple", caption="P.generosa long format")
+```
+
+## Break cells by semi-colon and return only distinct values
+```{r echo=TRUE}
+#break cells and reform with unique values only
+distinct_goslims <- pgenerosa_simple_goslims %>%
+  ### <b>
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";")))  %>% distinct(Term_unique, .keep_all = TRUE) %>%
+  mutate(GOslim_unique = lapply(strsplit(as.character(GOslim),";"),function(GOslim_unique) paste0(unique(GOslim_unique), collapse = ";"))) %>% 
+  distinct(GOslim_unique, .keep_all = TRUE)
+### </b>
+
+knitr::kable(head(distinct_goslims[1:5, 1:5]), "simple")
+```
+
+## Get GOterm counts
+```{r echo=TRUE, results='asis'}
+#count top GOterms
+tissue_goslims <- pgenerosa_long %>%
+    group_by(tissue) %>% 
+  ### <b>
+  filter(binary == 1) %>%
+  ### </b>
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+  distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>%
+  separate_rows(Term_unique, sep = ";") %>%
+  mutate(Term_unique = trimws(Term_unique)) %>%
+  count(Term_unique, tissue, sort = TRUE)
+
+kable(tissue_goslims[1:5,], caption="GOterms by tissue")
+```
+
+## SPECIES 
+- download blast from Mercenaria or Manila Clams against Pgenerosa db
+```{r echo=FALSE, results='asis', cache=TRUE}
+## download other clam species
+#from Mox blasting Manilla/Mercenaria on Pgen
+Manilla_Pgen<-read.table(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Manilla_Pgenenerosa_blastx.tab")
+Manila_Pgen_new <- separate(Manilla_Pgen, V2, into = c("gene", "Scaffold"), sep = "::")
+names(Manila_Pgen_new)[1]<-"Manila_gene"
+names(Manila_Pgen_new)[12]<-"e-value"
+# remove unnessisary data 
+Manila_Pgen_clean <- select(Manila_Pgen_new, -c(3:11, 13))
+
+#Manila_Pgen_new$accessions <- sub("\\.1$", "", Manila_Pgen_new$accessions)
+
+#761 shared genes
+
+Pgen_Manila<-read.table(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_Manilla_db_blastx.tab")
+Pgen_Manila_new<- separate(Pgen_Manila, V1, into = c("gene", "Scaffold"), sep = "::") 
+names(Pgen_Manila_new)[3]<-"Manila_gene"
+names(Pgen_Manila_new)[12]<-"e-value"
+# remove unnessisary data 
+Pgen_Manila_clean <- select(Pgen_Manila_new, -c(2, 4:11, 13))
+#Pgen_Manila_new$accessions <-sub("\\.1$", "", Pgen_Manila_new$accessions)
+#657 shared genes
+
+Mercenaria_Pgen<-read.table(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Mercenaria_Pgenenerosa_blastx.tab")
+Mercenaria_Pgen_new<- separate(Mercenaria_Pgen, V2, into = c("gene", "Scaffold"), sep = "::") 
+names(Mercenaria_Pgen_new)[1]<-"Mercenaria_gene"
+names(Mercenaria_Pgen_new)[12]<-"e-value"
+# remove unnessisary data 
+Mercenaria_Pgen_clean <- select(Mercenaria_Pgen_new, -c(3:11, 13))
+#Mercenaria_Pgen_new$accessions <-sub("\\.1$", "", Mercenaria_Pgen_new$accessions)
+#Mercenaria_Pgen_new$accessions <-sub("\\.2$", "", Mercenaria_Pgen_new$accessions)
+#6,521 shared genes
+
+Pgen_Mercenaria<-read.table(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_Mercenaria_db_blastx.tab")
+Pgen_Mercenaria_new<- separate(Pgen_Mercenaria, V1, into = c("gene", "Scaffold"), sep = "::") 
+names(Pgen_Mercenaria_new)[3]<-"Mercenaria_gene"
+names(Pgen_Mercenaria_new)[12]<-"e-value"
+Pgen_Mercenaria_clean <- select(Pgen_Mercenaria_new, -c(2, 4:11, 13))
+#Pgen_Mercenaria_new$accessions <-sub("\\.1$", "", Pgen_Mercenaria_new$accessions)
+#Pgen_Mercenaria_new$accessions <-sub("\\.2$", "", Pgen_Mercenaria_new$accessions)
+#5,099 shared 
+knitr::kable(head(Pgen_Mercenaria_new[1:5, 1:5]), "simple")
+```
+
+## ex) Annotated Mercenaria Transcriptome
+```{r echo=TRUE, results='asis'}
+#join clam transcriptome with goslims
+Manila_Pgen_goslims <- Manila_Pgen_new %>%
+left_join(goslims, by=c("gene"))
+Pgen_Manila_goslims <- Pgen_Manila_new %>%
+  left_join(goslims, by=c("gene"))
+Mercenaria_Pgen_goslims<- Mercenaria_Pgen_new %>%
+left_join(goslims, by=c("gene")) #6521
+### <b>
+Pgen_Mercenaria_goslims<- Pgen_Mercenaria_new %>%
+left_join(goslims, by=c("gene")) #5099
+### </b>
+knitr::kable(head(Pgen_Mercenaria_goslims[1:5, 1:5]), "simple",  caption="annotated Mercenaria Transcriptome")
+```
+
+## View GOterm counts by Species
+```{r echo=FALSE, results='asis', cache=TRUE}
+# For Pgenerosa alone (wide format) 
+# Separate the "Term" column by semi-colons and count the occurrences
+term_count_Pgen <- distinct_goslims %>% #make sure you have removed duplicate values beforehand
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) # Count the occurrences and sort by descending count
+
+# Print the count of each term
+knitr::kable(term_count_Pgen[1:5,], caption="P. generosa")
+
+# For Pgenerosa using pgenerosa_long (versus wide)
+# Separate the "Term" column by semi-colons and count the occurrences
+term_count_Pgen_long <- pgenerosa_long %>%  # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+  distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) # Count the occurrences and sort by descending count
+
+# Print the count of each term
+#print(term_count_Pgen_long)
+#exactly the same as Pgen_wide
+
+
+#for Manila Clam
+# Separate the "Term" column by semi-colons and count the occurrences
+term_count_manila <- Manila_Pgen_goslims %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+  distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) # Count the occurrences and sort by descending count
+
+# Print the count of each term
+#print(term_count_manila)
+
+# Manila Reverse
+term_count_manila_r <- Pgen_Manila_goslims %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+  distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) # Count the occurrences and sort by descending count
+
+# Print the count of each term
+#print(term_count_manila_r)
+
+#for Mercenaria Clam
+# Separate the "Term" column by semi-colons and count the occurrences
+term_count_Mercenaria <- Mercenaria_Pgen_goslims %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+  distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) # Count the occurrences and sort by descending count
+
+# Print the count of each term
+#print(term_count_Mercenaria)
+
+#for Mercenaria Clam reverse
+# Separate the "Term" column by semi-colons and count the occurrences
+term_count_Mercenaria_r <- Pgen_Mercenaria_goslims %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+  distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) # Count the occurrences and sort by descending count
+
+# Print the count of each term
+#print(term_count_Mercenaria_r) #over 3x more terms than Mercenaria not reversed...wonder why that is....
+
+#combine all 5 datasets
+term_count_all <- bind_rows(term_count_Pgen, term_count_manila, term_count_manila_r, term_count_Mercenaria, term_count_Mercenaria_r, .id = "transcriptome") 
+
+term_count_best <- term_count_all %>% 
+  mutate(transcriptome = ifelse(transcriptome == 1, "Pgenerosa", 
+                    ifelse(transcriptome == 2, "Manila",
+                           ifelse(transcriptome == 3, "Manila_r", 
+                                  ifelse(transcriptome == 4, "Mercenaria", 
+                                         ifelse(transcriptome == 5, "Mercenaria_r", NA))))))
+```
+
+## GOterm counts for all Pgenerosa genes
+```{r}
+knitr::kable(term_count_best[1:10,], caption="GOterms count, removing duplicates")
+```
+
+
+
+```{r echo=FALSE}
+#normalize by Pgen transcriptome
+sum_terms<- term_count_Pgen %>% #count terms in n 
+  summarise(total_n = sum(n)) #17,611
+
+Pgen_normalized<- term_count_Pgen %>%
+  mutate(Pgen_normalized = n/17611)
+
+normal_counts<- term_count_best %>%
+  group_by(transcriptome) %>%
+  summarise(total_n = sum(n))
+#Pgen = 17,611
+#Manila = 1235
+#Manila_r = 1390
+#Mercenaria = 2198
+#Mercenaria_r = 7027
+
+kable(normal_counts[1:7,], caption="Total Terms per Species")
+
+### <b>
+filtered_data1 <- term_count_best %>%
+  filter(transcriptome %in% c("Mercenaria_r", "Manila", "Mercenaria", "Manila_r")) %>%
+  mutate(n_divided = case_when(
+                               transcriptome == "Manila" ~ n/1235,
+                               transcriptome == "Manila_r" ~ n/1390,
+                               transcriptome == "Mercenaria" ~ n/2198,
+                               transcriptome == "Mercenaria_r" ~ n/7027))
+### </b>
+
+
+grouped_data1<-left_join(filtered_data1, Pgen_normalized, by="Term_unique")
+
+species_normal<-grouped_data1 %>%
+  mutate(normalized = n_divided/Pgen_normalized)%>%
+  rename(n_species = n.x) %>%
+  rename(n_Pgen = n.y) %>%
+  mutate(log_scale = log(normalized))
+#for heatmap
+
+knitr::kable(species_normal[1:5, 1:5],caption="Species Normalized by Pgenerosa Transcriptome")
+```
+
+## Normalize Species by Pgenerosa transcriptome 
+```{r}
+### <b>
+filtered_data1 <- term_count_best %>%
+  filter(transcriptome %in% c("Mercenaria_r", "Manila", "Mercenaria", "Manila_r")) %>%
+  mutate(n_divided = case_when(
+                               transcriptome == "Manila" ~ n/1235,
+                               transcriptome == "Manila_r" ~ n/1390,
+                               transcriptome == "Mercenaria" ~ n/2198,
+                               transcriptome == "Mercenaria_r" ~ n/7027))
+### </b>
+
+knitr::kable(species_normal[1:5, 1:5],caption="Species Normalized by Pgenerosa Transcriptome")
+
+```
+
+
+## TISSUES
+- gonad
+- ctenidia
+- heart
+- juvenile
+- larvae
+
+```{r echo=FALSE}
+#add new column to variable term_count_Pgen
+#- normalize goterm count by % in geoduck transcriptome by % tissue goterm counts by tissue transcriptome and return another % which is the normalized goterm count
+
+
+#normalize data by % hit in Pgen transcriptome
+sum_terms<- term_count_Pgen %>% #count terms in n 
+  summarise(total_n = sum(n)) #17,611
+
+Pgen_normalized<- term_count_Pgen %>%
+  mutate(Pgen_normalized = n/17611) 
+
+#normalize tissue data
+normal_counts<- tissue_goslims %>%
+  group_by(tissue) %>%
+  summarise(total_n = sum(n))
+#heart = 16,021
+#ctenidia = 15,911
+#gonad = 14,715
+#juv = 17,277
+#larvae = 16,632
+
+kable(normal_counts[1:6,], caption="Total Terms per Tissue(s)")
+
+filtered_data <- tissue_goslims %>%
+  filter(tissue %in% c("ctenidia", "heart", "gonad", "larvae", "juvenile")) %>%
+  mutate(n_divided = case_when(tissue == "ctenidia" ~ n/15911,
+                               tissue == "heart" ~ n/16021, 
+                               tissue == "gonad" ~ n/14715, 
+                               tissue == "larvae" ~ n/16632,
+                               tissue == "juvenile" ~ n/17277)) 
+
+#combine Pgen_normalized with filtered_data and add new column normalized where tissue_n/geoduck_n to produce new normalized value
+
+grouped_data<-left_join(filtered_data, Pgen_normalized, by="Term_unique")
+
+Tis_normal<-grouped_data %>%
+  mutate(normalized = n_divided/Pgen_normalized)%>%
+  rename(n_tissue = n.x) %>%
+  rename(n_Pgen = n.y) %>%
+  mutate(log_scale = log(normalized))
+#for heatmap
+```
+
+## Normalized Tissue Data
+```{r}
+filtered_data <- tissue_goslims %>%
+  filter(tissue %in% c("ctenidia", "heart", "gonad", "larvae", "juvenile")) %>%
+  ### <b>
+  mutate(n_divided = case_when(tissue == "ctenidia" ~ n/15911,
+                               tissue == "heart" ~ n/16021, 
+                               tissue == "gonad" ~ n/14715, 
+                               tissue == "larvae" ~ n/16632,
+                               tissue == "juvenile" ~ n/17277)) 
+### </b>
+kable(Tis_normal[1:7,])
+```
+
+## Species Heatmap normalized by P. generosa transcriptopme where white =  0.9
+```{r echo=FALSE}
+species_normal_2<-species_normal %>%
+  filter(Term_unique != "NA")%>%
+  filter(transcriptome == "Manila_r" | transcriptome == "Mercenaria_r")
+
+heatmap10<-ggplot(species_normal_2, aes(transcriptome, y=Term_unique, fill=normalized))+geom_tile(color="white")+  scale_fill_gradient2(low = "red", mid = "white", high = "blue", midpoint = 1, na.value = "grey50")+theme_bw()+theme(axis.text.x = element_text(angle = 45, hjust = 1) )
+
+heatmap10
+```
+
+## Tissue Heatmap normalized by P. generosa transcriptome where white =  0.9
+```{r echo=FALSE}
+Tis_normal_2<-Tis_normal %>%
+  filter(Term_unique != "NA")
+
+heatmap8<-ggplot(Tis_normal_2, aes(tissue, y=Term_unique, fill=normalized))+geom_tile()+theme_bw()+theme(axis.text.x = element_text(angle = 45, hjust = 1) )+ scale_fill_gradient2(low = "yellow", mid = "white", high = "red", midpoint = 0.9, na.value = "grey50")#need to set color wheel to white = 1 and red = min and blue = max
+
+heatmap8
+```
+
+
+## Plan for the next couple weeks: 
+Week 1 - presented research at National Shellfish Association Meeting
+
+Week 2 - Got COVID, started downloading clam transcriptomes
+
+Week 3 - gather genes from each tissue type, build sh files for blasting manilla clam and mercenaria against pgen in Mox, Run stand blasts with Manilla, Pgen and Mercenaria build database for Manilla, Pgen and Mercenaria, start writing methods
+
+Week 4 - dowload to raven the genomic and transctiptomic information for 6 clam species, find transcriptomes for introduction, break goslims into seperate columns, join blast tables with annotation tables
+
+Week 5 - added new normalizing gene count column for heatmapping, finished writing draft 1 of results, working on methods, finish introduction
+
+Week 6 - finish writing introduction/discussion for geoduck paper
+
+Week 7 - address edits from Steven for CS work, run blast against other clam transcriptomes (step 8), make table for compairative clam analysis, update methods and results in geoduck paper
+
+Week 8 -
+
+Week 9 -
+
+Week 10 - hopefully nothing, prepare for graduation!
+
+
