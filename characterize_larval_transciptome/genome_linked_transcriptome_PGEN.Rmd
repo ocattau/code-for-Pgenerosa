@@ -4,7 +4,10 @@ author: "Olivia Cattau"
 date: '2023-04-06'
 output: html_document
 ---
-```{r echo=FALSE}
+
+https://rpubs.com/ocattau/1041480
+
+```{r ,echo=FALSE, warning=FALSE, message=FALSE}
 library(tidyverse)
 library(stringr)
 library(UpSetR)
@@ -22,11 +25,12 @@ library(magrittr) # needs to be run every time you start R and want to use %>%
 library(dplyr)   
 library(scales)
 library(unikn)
+library(knitr)
 ```
 
 # LOAD DATA
 ## load new genome linked transcriptome PGEN
-```{r}
+```{r, cache=TRUE}
 salmonMatrix<-read.table(file="https://raw.githubusercontent.com/sr320/paper-geoduck-gene-exp/main/data/salmon.merged.gene_tpm.tsv", header=TRUE, sep = '\t')
 names(salmonMatrix)[1]<-"target_id"
 names(salmonMatrix)[2]<-"gene"
@@ -35,13 +39,13 @@ head(salmonMatrix)
 ```
 
 ##load geoduck gene annotation file from 
-```{r}
+```{r, cache=TRUE}
 mappingMatrix<-read.table(file="https://gannet.fish.washington.edu/Atumefaciens/20220419-pgen-gene_annotation_mapping/20220419-pgen-gene-accessions-gene_id-gene_name-gene_description-alt_gene_description-go_ids.tab", header=TRUE, sep = '\t', fill=TRUE)
 colnames(mappingMatrix) <- c("target_id", "identifiers", "gene_id", "gene_name", "annotation", "alt_annotation", "goterms")
 #7,736
 ```
 
-##load goslim mapping from Swiss Prott
+## load goslim mapping from Swiss Prott
 [link here](https://github.com/RobertsLab/code/tree/master/r_projects/sam/20230328-pgen-gene_annotation-update) 
 ```{r}
 #double check to make sure this is reading the data correctly
@@ -49,10 +53,13 @@ goslims<-read.csv(file="https://raw.githubusercontent.com/RobertsLab/code/master
 #14,672
 ```
 
-##download other trasncriptome from clam species
-```{r}
+## download other trasncriptome from clam species
+```{r, cache=TRUE}
 #from Mox blasting Manilla/Mercenaria on Pgen
 Manilla_Pgen<-read.table(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Manilla_Pgenenerosa_blastx.tab")
+```
+
+```{r ,echo=FALSE, cache=TRUE}
 Manila_Pgen_new <- separate(Manilla_Pgen, V2, into = c("gene", "Scaffold"), sep = "::")
 names(Manila_Pgen_new)[1]<-"Manila_gene"
 names(Manila_Pgen_new)[12]<-"e-value"
@@ -94,8 +101,8 @@ Pgen_Mercenaria_clean <- select(Pgen_Mercenaria_new, -c(2, 4:11, 13))
 #5,099 shared 
 ```
 
-##load genomes from blast output
-```{r}
+## load genomes from blast output
+```{r, cache=TRUE}
 Mercenaria_genome<-read.csv(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_Mercenaria_db_genome_blastn.tab", sep = '\t', header = FALSE)
 
 Quadrangularis_genome<-read.csv(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_quadrangularis_db_genome_blastn.tab", sep = '\t', header = FALSE)
@@ -105,9 +112,12 @@ Manila_genome<-read.csv(file="https://gannet.fish.washington.edu/gigas/data/p.ge
 Marissincia_genome<-read.csv(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_marissinsa_db_genome_blastn.tab", sep = '\t', header = FALSE)
 
 Solida_genome<-read.csv(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/solida_db_genome_blastn.tab", sep = '\t', header = FALSE)
+
+kable(Solida_genome[1:10,1:5])
 ```
-#get count data for Column 2
-#get summary data for genomes
+
+
+### get summary data for genomes
 ```{r}
 #Mercenaria
 Mercenaria_new <- separate(Mercenaria_genome, V1, into = c("gene", "Scaffold"), sep = "::")
@@ -158,10 +168,11 @@ Solida_summary <- Solida_new%>%
 ## make tables for clam genomes
 ```{r}
 clam_genomes<-bind_rows(lst(Solida_new, Marissincia_new, Mercenaria_new, Manila_new, Quadrangularis_new), .id = "clam")
+kable(clam_genomes[1:5,1:5])
 ```
 
-#JOIN DATA
-##combine all clams for scatterplot by e-value
+# JOIN DATA
+## combine all clams for scatterplot by e-value
 ```{r}
 #all clam transcriptomes
 #Reminder: Merc->Pgen = 6521, Manila->Pgen = 761, Pgen -> Merc = 5,099, Pgen -> Manila = 657
@@ -171,7 +182,7 @@ compairative_clam_transcripts_right <- left_join(Mercenaria_Pgen_clean, Manila_P
 compairative_clam_transcripts_left <- left_join(Pgen_Mercenaria_clean, Pgen_Manila_clean, by = "gene") 
 ```
 
-#join clam transcriptome with goslims
+# join clam transcriptome with goslims
 ```{r}
 Manila_Pgen_goslims <- Manila_Pgen_new %>%
 left_join(goslims, by=c("gene"))
@@ -183,7 +194,7 @@ Pgen_Mercenaria_goslims<- Pgen_Mercenaria_new %>%
 left_join(goslims, by=c("gene")) #5099
 ```
 
-#long format
+# long format
 ```{r}
 tidy_data<-salmonMatrix
 head(tidy_data)
@@ -196,8 +207,7 @@ tidy_data_long$binary=ifelse(tidy_data_long$tpm > 0, 1, 0)
 #add goslims below
 ```
 
-#combine datasets into one gene annotation file***
-needs double checks
+# combine datasets into one gene annotation file
 ```{r}
 pgenerosa_complete<-salmonMatrix %>% 
   left_join(mappingMatrix, by=c("target_id")) 
@@ -210,11 +220,12 @@ pgenerosa_long<-tidy_data_long %>% #best long pgenerosa data set
   left_join(goslims, by=c("gene"))
 pgenerosa_goslims_long<-tidy_data_long %>%
   left_join(pgenerosa_simple_goslims, by=c("gene"))
+kable(pgenerosa_simple_goslims[1:10, 1:10])
 ```
 
 
-#break semi-colon in Term column and count unique values only
-##distinct goslims
+## break semi-colon in Term column and count unique values only
+### distinct goslims
 ```{r}
 # check for duplicate values within each cell using strsplit() and anyDuplicated()
 duplicates <- sapply(strsplit(pgenerosa_simple_goslims$gene, ";"), anyDuplicated)
@@ -242,10 +253,12 @@ distinct_goslims <- pgenerosa_simple_goslims %>%
   distinct(Term_unique, .keep_all = TRUE) %>%
   mutate(GOslim_unique = lapply(strsplit(as.character(GOslim), ";"),function(GOslim_unique) paste0(unique(GOslim_unique), collapse = ";"))) %>% 
   distinct(GOslim_unique, .keep_all = TRUE)
+
+kable(distinct_goslims[1:10,1:10])
 ```
 
-#SPECIES
-#Separate the Term columb by semi-colons to count occurances for table
+# SPECIES
+## Separate the Term columb by semi-colons to count occurances for table
 ```{r}
 # For Pgenerosa alone (wide format) 
 # Separate the "Term" column by semi-colons and count the occurrences
@@ -334,10 +347,9 @@ term_count_best <- term_count_all %>%
                                   ifelse(transcriptome == 4, "Mercenaria", 
                                          ifelse(transcriptome == 5, "Mercenaria_r", NA))))))
 
-#write dataframe into a CSV for table making
-write.csv(term_count_best, file="/Users/oliviacattau/Documents/GitHub/olivia-geoduck/output/unique_term_count_mult_clam_transcriptomes.csv")
 ```
-##normalize
+
+## NORMALIZE
 ```{r}
 #normalize by Pgen transcriptome
 sum_terms<- term_count_Pgen %>% #count terms in n 
@@ -373,10 +385,10 @@ species_normal<-grouped_data1 %>%
   mutate(log_scale = log(normalized))
 #for heatmap
 
-write.csv(species_normal, file="/Users/oliviacattau/Documents/GitHub/olivia-geoduck/output/BEST_species_normalized.csv")
+kable(species_normal[1:5,1:5])
 ```
 
-##count GOterms unique to species
+## count GOterms unique to species
 ```{r}
 #####make new variables with binary data
 
@@ -517,12 +529,11 @@ Pgen_count_unique <- goslims_genes_Pgen %>% # remove duplicates from Term column
 
 species_unique<-bind_rows(Mer_Pgen_count_unique, Man_Pgen_count_unique, MM_count_unique, Pgen_count_unique, all_count_unique)
 
-write.csv(species_unique, file="/Users/oliviacattau/Documents/GitHub/olivia-geoduck/output/BEST_species_unique_GOterms.csv")
-
+kable(species_unique[1:4, 1:4])
 ```
 
-#TISSUE
-#Count Goslims by tissue type
+# TISSUE
+## Count Goslims by tissue type
 ```{r}
 #count top GOterms
 tissue_goslims <- pgenerosa_long %>%
@@ -534,12 +545,10 @@ tissue_goslims <- pgenerosa_long %>%
   separate_rows(Term_unique, sep = ";") %>%
   mutate(Term_unique = trimws(Term_unique)) %>%
   count(Term_unique, tissue, sort = TRUE)
-
-write.csv(tissue_goslims, file="/Users/oliviacattau/Documents/GitHub/olivia-geoduck/output/tissue_counts_unique.csv")
 ```
 
-#NORMALIZE
-##normalize goterm count by % in geoduck transcriptome by % tissue goterm counts by tissue transcriptome and return another % which is the normalized goterm count
+# NORMALIZE
+## normalize goterm count by % in geoduck transcriptome by % tissue goterm counts by tissue transcriptome and return another % which is the normalized goterm count
 ```{r}
 #add new column to variable term_count_Pgen
 
@@ -579,11 +588,11 @@ Tis_normal<-grouped_data %>%
   mutate(log_scale = log(normalized))
 #for heatmap
 
-write.csv(Tis_normal, file="/Users/oliviacattau/Documents/GitHub/olivia-geoduck/output/BEST_tissues_normalized.csv")
+kable(Tis_normal[1:5, 1:5])
 ```
 
 
-##filter by tissue type
+## filter by tissue type
 not actually unique goslims, only unique to tissue types
 ```{r}
 tidy1<-pgenerosa_goslims_long %>%
@@ -628,17 +637,15 @@ juvorlarv<-pgenerosa_goslims %>%
 
 all_unique<-pgenerosa_goslims %>%
    filter(ctenidia > 0 & gonad > 0 & heart > 0 & juvenile > 0 & larvae > 0)
-write.csv(all_unique, file="/Users/oliviacattau/Documents/GitHub/code-for-Pgenerosa/output/all_unique.csv")
 ```
 
 ## count GOterms for individual tissues
-```{r}
 gonad
 larvae
 heart
 ctenidia
 juvenile
-
+```{r}
 gonad_count_unique <- gonad %>% # remove duplicates from Term column and create Term_unique column
   mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% # distinct(Term_unique, .keep_all = TRUE) %>% 
   filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
@@ -681,11 +688,10 @@ juvenile_count_unique <- juvenile %>% # remove duplicates from Term column and c
 
 tissue_all_unique_genes_GOterms<-rbind(heart_count_unique, gonad_count_unique, ctenidia_count_unique, larvae_count_unique, juvenile_count_unique)
 
-write.csv(tissue_all_unique_genes_GOterms, file="/Users/oliviacattau/Documents/GitHub/olivia-geoduck/output/BEST_tissue_unique_GOterms.csv")
-
+kable(tissue_all_unique_genes_GOterms[1:4, 1:4])
 ```
 
-#organize data for UpSet plot
+# organize data for UpSet plot
 ```{r}
 library(dplyr)
 #####make new variables with binary data
@@ -699,7 +705,7 @@ new_data<-tibble::column_to_rownames(new_data, var="target_id")
 new_data<-as.matrix(new_data) #count matrix for UpSet plots
 ```
 
-#Make UpSet plot for visualization of overlapping data: 
+# Make UpSet plot for visualization of overlapping data: 
 [link to UpSet R page](https://jokergoo.github.io/ComplexHeatmap-reference/book/upset-plot.html#upset-mode)
 ```{r}
 m1 = make_comb_mat(new_data) #only distinct intersections
@@ -731,7 +737,7 @@ x5<-as.data.frame(x4)
 sum(x5$x4) #450,489 --intersect mode
 ```
 
-#Make gene list for unique genes per tissue type
+# Make gene list for unique genes per tissue type
 ```{r}
 # create sample data frame
 count_df<- as.data.frame(new_data) %>%
@@ -949,7 +955,7 @@ unique_overlapping_genes<-bind_rows(hg_count_unique, hc_count_unique, cg_count_u
 
 ```
 
-#Make stacked bar-plot for visualizing Unique Terms
+# Make stacked bar-plot for visualizing Unique Terms
 ```{r}
 #filter Terms down a bit 
 
@@ -969,9 +975,11 @@ compairative_transcriptomes<-top20terms %>%
 stacked_barplot<-ggplot(top20terms, aes(x=transcriptome, y=n, fill=Term_unique))+geom_bar(stat = "identity")+theme_bw()
 
 stacked_barplot2<-ggplot(compairative_transcriptomes, aes(x=transcriptome, y=n, fill=Term_unique))+geom_bar(stat = "identity")+theme_bw()
+
+stacked_barplot
 ```
 
-#Heatmap for e-values
+# Heatmap 
 ```{r}
 #Z=e-values, Y=Manilla genes, X=Mercenaria genes
 
@@ -994,9 +1002,7 @@ heatmap7<- ggplot(tissues2, aes(x=tissues, y=Term_unique, fill=n))+geom_tile()+t
 Tis_normal_2<-Tis_normal %>%
   filter(Term_unique != "NA")
 
-heatmap8<-ggplot(Tis_normal_2, aes(tissue, y=Term_unique, fill=normalized))+geom_tile()+theme_bw()+theme(axis.text.x = element_text(angle = 45, hjust = 1) )+ scale_fill_gradient2(low = "yellow", mid = "white", high = "red", midpoint = 0.9, na.value = "grey50")#need to set color wheel to white = 1 and red = min and blue = max
-
-p3 <- usecol(c("#E77500", "white", "black"), n = 7)
+heatmap8<-ggplot(Tis_normal_2, aes(tissue, y=Term_unique, fill=normalized))+geom_tile()+theme_bw()+theme(axis.text.x = element_text(angle = 45, hjust = 1) )+ scale_fill_gradient2(low = "yellow", mid = "white", high = "red", midpoint = 0.9, na.value = "grey50")
 
 heatmap9<-ggplot(Tis_normal, aes(tissue, y=Term_unique, fill=log_scale))+geom_tile(color="white")+  scale_fill_gradient2(low = "red", mid = "white", high = "blue", midpoint = 0, na.value = "grey50")+theme_bw()+theme(axis.text.x = element_text(angle = 45, hjust = 1) )#need to set color wheel to white = 1 and red = min and blue = max
 
@@ -1006,13 +1012,25 @@ species_normal_2<-species_normal %>%
 
 heatmap10<-ggplot(species_normal_2, aes(transcriptome, y=Term_unique, fill=normalized))+geom_tile(color="white")+  scale_fill_gradient2(low = "red", mid = "white", high = "blue", midpoint = 1, na.value = "grey50")+theme_bw()+theme(axis.text.x = element_text(angle = 45, hjust = 1) )
 
-#barplot?
+heatmap7
+heatmap8
+heatmap9
+heatmap10
+```
+
+
+# scatter plots for e-values
+```{r}
 
 scatter<-ggplot(distinct_goslims, aes(x=gonad, y=juvenile))+geom_point()+theme_bw()
 
+scatter
+
 scatter2<-ggplot(distinct_goslims, aes(x=heart, y=juvenile))+geom_point()+theme_bw()
 
-compairative_clam_transcripts_right
+scatter2
+
+#compairative_clam_transcripts_right
 
 scatter4<-ggplot(compairative_clam_transcripts_right, aes(x=`e-value.x`, y=`e-value.y`))+geom_point()+theme_bw()+xlab("Mercenaria")+ylab("Manila")+labs(title="Pgenerosa blast db")+ theme(plot.title = element_text(hjust = 0.5, margin = margin(b = 10)))#removed 3394 rows containing missing values
 
