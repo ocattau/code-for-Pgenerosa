@@ -7,7 +7,7 @@ output: html_document
 
 https://rpubs.com/ocattau/1041480
 
-```{r ,echo=FALSE, warning=FALSE, message=FALSE}
+```{r ,echo=FALSE, warning=FALSE, message=FALSE, error=FALSE}
 library(tidyverse)
 library(stringr)
 library(UpSetR)
