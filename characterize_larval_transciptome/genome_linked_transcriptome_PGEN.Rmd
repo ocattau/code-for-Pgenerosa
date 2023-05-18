@@ -2,7 +2,11 @@
 title: "geoduck genome linked transcriptome"
 author: "Olivia Cattau"
 date: '2023-04-06'
-output: html_document
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
 ---
 
 https://rpubs.com/ocattau/1041480
@@ -531,6 +535,23 @@ species_unique<-bind_rows(Mer_Pgen_count_unique, Man_Pgen_count_unique, MM_count
 
 kable(species_unique[1:4, 1:4])
 ```
+
+# Oyster female gonad comparison
+## load data and filter for genebank accession numbers
+```{r}
+oyster_gonad<-read.csv(file="https://raw.githubusercontent.com/course-fish546-2023/olivia-geoduck/main/data/pone.0036353.s003.csv")
+
+oyster_gonad<- oyster_gonad %>%
+  filter(Description != 0) %>%
+  group_by(Cluster) %>%
+  select(Genebank, Cluster)
+
+write.csv(oyster_gonad, file="/Users/oliviacattau/Documents/GitHub/code-for-Pgenerosa/output/oyster_gonad_clusters.csv")
+
+
+```
+
+
 
 # TISSUE
 ## Count Goslims by tissue type
