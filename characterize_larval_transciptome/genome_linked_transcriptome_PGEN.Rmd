@@ -7,6 +7,9 @@ output:
     toc: true
     toc_float: true
     toc_depth: 3
+    theme: cosmo
+    highlight: espresso
+    number_sections:  true
 ---
 
 https://rpubs.com/ocattau/1041480
@@ -30,6 +33,7 @@ library(dplyr)
 library(scales)
 library(unikn)
 library(knitr)
+library(data.table)
 ```
 
 # LOAD DATA
@@ -38,11 +42,11 @@ library(knitr)
 salmonMatrix<-read.table(file="https://raw.githubusercontent.com/sr320/paper-geoduck-gene-exp/main/data/salmon.merged.gene_tpm.tsv", header=TRUE, sep = '\t')
 names(salmonMatrix)[1]<-"target_id"
 names(salmonMatrix)[2]<-"gene"
-head(salmonMatrix)
+data.table(salmonMatrix)
 #34,947
 ```
 
-##load geoduck gene annotation file from 
+## load geoduck gene annotation file from 
 ```{r, cache=TRUE}
 mappingMatrix<-read.table(file="https://gannet.fish.washington.edu/Atumefaciens/20220419-pgen-gene_annotation_mapping/20220419-pgen-gene-accessions-gene_id-gene_name-gene_description-alt_gene_description-go_ids.tab", header=TRUE, sep = '\t', fill=TRUE)
 colnames(mappingMatrix) <- c("target_id", "identifiers", "gene_id", "gene_name", "annotation", "alt_annotation", "goterms")
@@ -546,9 +550,9 @@ oyster_gonad<- oyster_gonad %>%
   group_by(Cluster) %>%
   select(Genebank, Cluster)
 
-write.csv(oyster_gonad, file="/Users/oliviacattau/Documents/GitHub/code-for-Pgenerosa/output/oyster_gonad_clusters.csv")
+#write.csv(oyster_gonad, file="/Users/oliviacattau/Documents/GitHub/olivia-geoduck/output/oyster_gonad_clusters.csv")
 
-
+kable(oyster_gonad[1:10, 1:2])
 ```
 
 
