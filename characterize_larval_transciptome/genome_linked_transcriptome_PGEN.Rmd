@@ -34,6 +34,7 @@ library(scales)
 library(unikn)
 library(knitr)
 library(data.table)
+library(plotly)
 ```
 
 # LOAD DATA
@@ -1022,7 +1023,9 @@ heatmap2<-ggplot(top20terms, aes(x=transcriptome, y=Term_unique, fill=n))+geom_t
 
 heatmap3<-ggplot(compairative_transcriptomes, aes(x=transcriptome, y=Term_unique, fill=n))+geom_tile()+theme_bw() + scale_fill_gradient(low="#c2f9ff", high="#003460")
 
-heatmap7<- ggplot(tissues2, aes(x=tissues, y=Term_unique, fill=n))+geom_tile()+theme_bw()+ scale_fill_gradient(low="#c2f9ff", high="#003460")+theme(axis.text.x = element_text(angle = 45, hjust = 1) )
+heatmap7<- ggplot(tissues2, aes(x=tissues, y=Term_unique, fill=n, text=n))+geom_tile()+theme_bw()+ scale_fill_gradient(low="#c2f9ff", high="#003460")+theme(axis.text.x = element_text(angle = 45, hjust = 1) )
+
+ggplotly(heatmap7, tooltip="next")
 
 Tis_normal_2<-Tis_normal %>%
   filter(Term_unique != "NA")
