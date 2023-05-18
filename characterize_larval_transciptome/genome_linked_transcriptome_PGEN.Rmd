@@ -1001,7 +1001,7 @@ stacked_barplot<-ggplot(top20terms, aes(x=transcriptome, y=n, fill=Term_unique))
 
 stacked_barplot2<-ggplot(compairative_transcriptomes, aes(x=transcriptome, y=n, fill=Term_unique))+geom_bar(stat = "identity")+theme_bw()
 
-stacked_barplot
+stacked_barplot #make more horizontal
 ```
 
 # Heatmap 
