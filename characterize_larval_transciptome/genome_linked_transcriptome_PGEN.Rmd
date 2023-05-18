@@ -557,6 +557,16 @@ kable(oyster_gonad[1:10, 1:2])
 ```
 
 
+## load results from blast from genebank list of accession number above against Pgen *transcriptome*
+used Panopea-generosa-v2-db as transcriptome 
+```{r}
+cgigas_gonad_pgen<-read.csv(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/cgigas_gonad_pgen.tab", header=FALSE, sep = '\t')
+cgigas_gonad_pgen<- separate(cgigas_gonad_pgen, V2, into = c("Pgen_gene", "Scaffold"), sep = "::")
+names(cgigas_gonad_pgen)[1]<-"Cgigas_GeneBank"
+names(cgigas_gonad_pgen)[12]<-"e-value"
+
+```
+
 
 # TISSUE
 ## Count Goslims by tissue type

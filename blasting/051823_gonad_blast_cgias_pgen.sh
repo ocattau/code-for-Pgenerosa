@@ -15,15 +15,11 @@
 ## Specify the working directory for this job
 #SBATCH --chdir=/gscratch/srlab/ocattau
 
-/gscratch/srlab/programs/ncbi-blast-2.8.1+/bin/makeblastdb \
--in /gscratch/srlab/ocattau/clamdata/ncbi_dataset/data/ncbi_dataset/data/GCA_947247005.1/GCA_947247005.1_xbSpiSoli1.1_genomic.fna \
--dbtype nucl \
--out /gscratch/srlab/ocattau/clamdata/blastdb2/solida_db_genome
 
 /gscratch/srlab/programs/ncbi-blast-2.8.1+/bin/blastn \
 -query /gscratch/srlab/ocattau/clamdata/Dheilly.fasta \
--db /gscratch/srlab/ocattau/clamdata/blastdb2/solida_db_genome \
--out /gscratch/srlab/ocattau/clamdata/blast_output/solida_db_genome_blastn.tab \
+-db /gscratch/srlab/ocattau/clamdata/blastdb2/Panopea-generosa-v2-db \
+-out /gscratch/srlab/ocattau/clamdata/blast_output/cgigas_gonad_pgen.tab \
 -evalue 1E-20 \
 -num_threads 30 \
 -max_target_seqs 1 \
