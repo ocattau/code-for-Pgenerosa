@@ -1,4 +1,9 @@
 # Research Report
+clean research report:
+https://rpubs.com/ocattau/1041480
+
+
+annotated R script: 
 https://rpubs.com/ocattau/1041088
 
 ## Steps:
