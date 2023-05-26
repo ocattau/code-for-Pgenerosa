@@ -8,8 +8,9 @@ output:
     toc_float: true
     toc_depth: 3
     theme: cosmo
-    highlight: espresso
+    highlight: pygments
     number_sections:  true
+    fig_caption: true
 ---
 
 https://rpubs.com/ocattau/1041480
@@ -35,34 +36,37 @@ library(unikn)
 library(knitr)
 library(data.table)
 library(plotly)
+library(gridExtra)
 ```
 
 # LOAD DATA
 ## load new genome linked transcriptome PGEN
 ```{r, cache=TRUE}
-salmonMatrix<-read.table(file="https://raw.githubusercontent.com/sr320/paper-geoduck-gene-exp/main/data/salmon.merged.gene_tpm.tsv", header=TRUE, sep = '\t')
+salmonMatrix<-read.csv(file="https://raw.githubusercontent.com/sr320/paper-geoduck-gene-exp/main/data/salmon.merged.gene_tpm.tsv", header=TRUE, sep = '\t')
 names(salmonMatrix)[1]<-"target_id"
 names(salmonMatrix)[2]<-"gene"
-data.table::data.table(salmonMatrix)
+data.table(salmonMatrix)
 #34,947
 ```
 
 ## load geoduck gene annotation file from 
 ```{r, cache=TRUE}
-mappingMatrix<-read.table(file="https://gannet.fish.washington.edu/Atumefaciens/20220419-pgen-gene_annotation_mapping/20220419-pgen-gene-accessions-gene_id-gene_name-gene_description-alt_gene_description-go_ids.tab", header=TRUE, sep = '\t', fill=TRUE)
+mappingMatrix<-read.csv(file="https://gannet.fish.washington.edu/Atumefaciens/20220419-pgen-gene_annotation_mapping/20220419-pgen-gene-accessions-gene_id-gene_name-gene_description-alt_gene_description-go_ids.tab", header=FALSE, sep = '\t', fill=TRUE)
 colnames(mappingMatrix) <- c("target_id", "identifiers", "gene_id", "gene_name", "annotation", "alt_annotation", "goterms")
-#7,736
+#14,672
+presence_count <- sum(!is.na(mappingMatrix[, 7]) & mappingMatrix[, 7] != "") #14,254
 ```
 
 ## load goslim mapping from Swiss Prott
 [link here](https://github.com/RobertsLab/code/tree/master/r_projects/sam/20230328-pgen-gene_annotation-update) 
-```{r}
+```{r, cache=TRUE}
 #double check to make sure this is reading the data correctly
 goslims<-read.csv(file="https://raw.githubusercontent.com/RobertsLab/code/master/r_projects/sam/20230328-pgen-gene_annotation-update/outputs/02-goslim-mapping/20230329-pgen-annotations-SwissProt-GO-BP_GOslim.tab", header=TRUE, sep = '\t')
 #14,672
+presence_count <- sum(!is.na(goslims[, 11]) & goslims[, 11] != "") #10,903
 ```
 
-## download other trasncriptome from clam species
+## download other transcriptome from clam species
 ```{r, cache=TRUE}
 #from Mox blasting Manilla/Mercenaria on Pgen
 Manilla_Pgen<-read.table(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Manilla_Pgenenerosa_blastx.tab")
@@ -182,7 +186,7 @@ kable(clam_genomes[1:5,1:5])
 
 # JOIN DATA
 ## combine all clams for scatterplot by e-value
-```{r}
+```{r, warning=FALSE, message=FALSE, error=FALSE}
 #all clam transcriptomes
 #Reminder: Merc->Pgen = 6521, Manila->Pgen = 761, Pgen -> Merc = 5,099, Pgen -> Manila = 657
 #always join large -> small
@@ -565,6 +569,7 @@ cgigas_gonad_pgen<- separate(cgigas_gonad_pgen, V2, into = c("Pgen_gene", "Scaff
 names(cgigas_gonad_pgen)[1]<-"Cgigas_GeneBank"
 names(cgigas_gonad_pgen)[12]<-"e-value"
 
+#can add goslims, don't see the value right now (5.24.23)
 ```
 
 
@@ -992,7 +997,7 @@ unique_overlapping_genes<-bind_rows(hg_count_unique, hc_count_unique, cg_count_u
 ```
 
 # Make stacked bar-plot for visualizing Unique Terms
-```{r}
+```{r, fig.width=10, fig.height=8}
 #filter Terms down a bit 
 
 terms_filtered <- term_count_best %>%
@@ -1012,11 +1017,11 @@ stacked_barplot<-ggplot(top20terms, aes(x=transcriptome, y=n, fill=Term_unique))
 
 stacked_barplot2<-ggplot(compairative_transcriptomes, aes(x=transcriptome, y=n, fill=Term_unique))+geom_bar(stat = "identity")+theme_bw()
 
-stacked_barplot #make more horizontal
+stacked_barplot 
 ```
 
-# Heatmap 
-```{r}
+# Heatmaps 
+```{r, cache=TRUE}
 #Z=e-values, Y=Manilla genes, X=Mercenaria genes
 
 top20_long<-reshape(top20terms, idvar = "Term_unique", timevar = "transcriptome", direction = "wide")
@@ -1035,8 +1040,6 @@ heatmap3<-ggplot(compairative_transcriptomes, aes(x=transcriptome, y=Term_unique
 
 heatmap7<- ggplot(tissues2, aes(x=tissues, y=Term_unique, fill=n, text=n))+geom_tile()+theme_bw()+ scale_fill_gradient(low="#c2f9ff", high="#003460")+theme(axis.text.x = element_text(angle = 45, hjust = 1) )
 
-ggplotly(heatmap7, tooltip="next")
-
 Tis_normal_2<-Tis_normal %>%
   filter(Term_unique != "NA")
 
@@ -1049,16 +1052,33 @@ species_normal_2<-species_normal %>%
   filter(transcriptome == "Manila_r" | transcriptome == "Mercenaria_r")
 
 heatmap10<-ggplot(species_normal_2, aes(transcriptome, y=Term_unique, fill=normalized))+geom_tile(color="white")+  scale_fill_gradient2(low = "red", mid = "white", high = "blue", midpoint = 1, na.value = "grey50")+theme_bw()+theme(axis.text.x = element_text(angle = 45, hjust = 1) )
+```
 
-heatmap7
+
+```{r, fig.height=10, fig.width=8}
+ggplotly(heatmap7, tooltip="next")
 heatmap8
 heatmap9
 heatmap10
 ```
 
-
-# scatter plots for e-values
+# pie charts
+Functional classification of P generosa contigs by RNA-Seq library
 ```{r}
+# Filter out NA values in the column n.Pgenerosa
+na_zero <- replace(top20_long, is.na(top20_long), 0)
+
+# Plot the pie chart using the filtered data
+pie_geoduck<-ggplot(na_zero, aes(x="", y=n.Pgenerosa, fill=Term_unique))+geom_bar(stat="identity", width=1) +
+  coord_polar("y", start=0) +theme_void()
+
+#Plot the pie using base R
+pie_geoduck_R<-pie(na_zero$n.Pgenerosa, labels = na_zero$Term_unique, main="Geoduck gene library GoSlims", cex=0.3)
+
+
+```
+# scatter plots for e-values
+```{r, cache=TRUE}
 
 scatter<-ggplot(distinct_goslims, aes(x=gonad, y=juvenile))+geom_point()+theme_bw()
 
