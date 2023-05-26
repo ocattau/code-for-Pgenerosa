@@ -1013,11 +1013,15 @@ compairative_transcriptomes<-top20terms %>%
   filter(transcriptome != "Pgenerosa") %>%
   filter(n >= 15)
 
-stacked_barplot<-ggplot(top20terms, aes(x=transcriptome, y=n, fill=Term_unique))+geom_bar(stat = "identity")+theme_bw()
+cols = rainbow(25, s=.6, v=.9)[sample(1:25,25)]
 
-stacked_barplot2<-ggplot(compairative_transcriptomes, aes(x=transcriptome, y=n, fill=Term_unique))+geom_bar(stat = "identity")+theme_bw()
+stacked_barplot<-ggplot(top20terms, aes(x=transcriptome, y=n, fill=Term_unique))+geom_bar(stat = "identity")+theme_bw()+scale_fill_manual(values=cols)
+
+stacked_barplot2<-ggplot(compairative_transcriptomes, aes(x=transcriptome, y=n, fill=Term_unique))+geom_bar(stat = "identity")+theme_bw()+scale_fill_manual(values=cols)
 
 stacked_barplot 
+stacked_barplot2
+
 ```
 
 # Heatmaps 
@@ -1064,7 +1068,7 @@ heatmap10
 
 # pie charts
 Functional classification of P generosa contigs by RNA-Seq library
-```{r}
+```{r, fig.width=10, fig.height=10}
 # Filter out NA values in the column n.Pgenerosa
 na_zero <- replace(top20_long, is.na(top20_long), 0)
 
@@ -1074,8 +1078,6 @@ pie_geoduck<-ggplot(na_zero, aes(x="", y=n.Pgenerosa, fill=Term_unique))+geom_ba
 
 #Plot the pie using base R
 pie_geoduck_R<-pie(na_zero$n.Pgenerosa, labels = na_zero$Term_unique, main="Geoduck gene library GoSlims")
-
-
 ```
 # scatter plots for e-values
 ```{r, cache=TRUE}
