@@ -1073,7 +1073,7 @@ pie_geoduck<-ggplot(na_zero, aes(x="", y=n.Pgenerosa, fill=Term_unique))+geom_ba
   coord_polar("y", start=0) +theme_void()
 
 #Plot the pie using base R
-pie_geoduck_R<-pie(na_zero$n.Pgenerosa, labels = na_zero$Term_unique, main="Geoduck gene library GoSlims", cex=0.3)
+pie_geoduck_R<-pie(na_zero$n.Pgenerosa, labels = na_zero$Term_unique, main="Geoduck gene library GoSlims")
 
 
 ```
