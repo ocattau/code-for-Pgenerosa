@@ -1,0 +1,151 @@
+---
+title: "clean code annotating larval geoduck transcriptome 3.8.22"
+author: "Olivia Cattau"
+date: "3/9/2022"
+output: html_document
+---
+#load count data from kallisto output(s)
+```{r}
+countMatrix<-read.table(file="https://raw.githubusercontent.com/sr320/nb-2022/main/P_generosa/analyses/kallisto-0207.isoform.counts.matrix", header=TRUE, sep = '\t')
+names(countMatrix)[1]<-"target_id"
+head(countMatrix)
+```
+
+#load blast data, see blasting .sh file to see code (in GitHub)
+```{r}
+blast_data<-read.table(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Panopea-generosa-uniprot_blastx.tab")
+names(blast_data)[1]<-"target_id" #renamed to match countMATRIX data
+names(blast_data)[2]<-"identifiers" #renamed to search in swiss prot 
+```
+#long data
+```{r}
+library(tidyverse)
+#convert to long data format 
+tidy_data<-countMatrix
+head(tidy_data)
+tidy_data_long<-tidy_data %>%
+  gather(key="tissue", value="tpm", heart:larvae) #name key as time, name value as tpm, gather columns heart:larvae, converts wide to long format
+head(tidy_data_long)
+tidy_data_long$binary=ifelse(tidy_data_long$tpm > 0, 1, 0)
+```
+
+#organize data for UpSet plot
+```{r}
+library(dplyr)
+#####make new variables with binary data
+tidy_data$heart=ifelse(tidy_data$heart > 0, 1, 0)
+tidy_data$gonad=ifelse(tidy_data$gonad >0, 1, 0)
+tidy_data$ctenidia=ifelse(tidy_data$ctenidia > 0, 1, 0)
+tidy_data$larvae=ifelse(tidy_data$larvae > 0, 1, 0)
+tidy_data$juv_amb=ifelse(tidy_data$juv_amb > 0, 1, 0)
+tidy_data$juv_sl=ifelse(tidy_data$juv_sl > 0, 1, 0)
+new_data<-tidy_data %>% select(target_id,heart, gonad, ctenidia, larvae, juv_amb, juv_sl)
+new_data<-tibble::column_to_rownames(new_data, var="target_id")
+new_data<-as.matrix(new_data)
+```
+
+#Make UpSet plot for visualization of overlapping data: 
+[link to UpSet R page](https://jokergoo.github.io/ComplexHeatmap-reference/book/upset-plot.html#upset-mode)
+```{r}
+library(devtools)
+#install_github("jokergoo/ComplexHeatmap")
+#if (!require("BiocManager", quietly = TRUE))
+    #install.packages("BiocManager")
+#BiocManager::install(version = "3.14")
+library(BiocManager)
+library(tidyr)
+library(UpSetR)
+library(ComplexHeatmap)
+library(tidyverse)
+library(magrittr) # needs to be run every time you start R and want to use %>%
+library(dplyr)    # alternatively, this also loads %>%
+#make upset plot, need to install above code to work 
+m1 = make_comb_mat(new_data) #only distinct intersections
+m2=make_comb_mat(new_data, mode="intersect")
+set_size(m1)
+comb_size(m1)
+comb_data<-as.data.frame(comb_size(m1))
+
+p1<-UpSet(m1 [comb_degree(m1)<=2], column_title ="All intersections of 2 or less") #intersections 2 or less
+p2<-UpSet(m1 [comb_degree(m1)>=3], column_title= "All intersection of 3 or more") #intersections 3 or more
+p3<-UpSet(m1, top_annotation = HeatmapAnnotation(
+    degree = as.character(comb_degree(m1)),
+    "Intersection\nsize" = anno_barplot(comb_size(m1), 
+        border = FALSE, 
+        gp = gpar(fill = "black"), 
+        height = unit(2, "cm")
+    ), 
+    annotation_name_side = "left", 
+    annotation_name_rot = 0), column_title="p. generosa transcriptome intersecting intersections") #distinct mode
+p5<-UpSet(m2 [comb_degree(m2)<=2], column_title ="All intersections of 2 or less")
+p6<-UpSet(m2 [comb_degree(m2)>=3], column_title ="All intersections of 2 or less")
+#####testing comb_set sizes
+x2<-comb_size(m1)
+x3<-as.data.frame(x2)
+sum(x3$x2) #1,363,959 --distinct mode
+x4<-comb_size(m2)
+x5<-as.data.frame(x4)
+sum(x5$x4) #11,976,891 --intersect mode
+```
+
+#Testing UpSet Plots
+```{r}
+library(dplyr)
+######testing lengths from UpSet Plots
+heart_length<-sum(tidy_data$h)
+gonad_length<-sum(tidy_data$g)
+ctenidia_length<-sum(tidy_data$c)
+larvae_length<-sum(tidy_data$l)
+juv_amb_length<-sum(tidy_data$ja)
+juv_sl_length<-sum(tidy_data$jsl)
+UpSet_test<-data.frame(tissue=c(heart_length, gonad_length, ctenidia_length, larvae_length, juv_amb_length, juv_sl_length))
+rownames(UpSet_test)<-c("heart", "gonad", "ctenidia", "larvae", "juv ambient", "juv low oa")
+print(UpSet_test)
+#####testing intersections from UpSet plots
+all_overlapping_genes<-tidy_data[apply(tidy_data, 1, function(row) all(row !=0)),]#remove all rows with zeros, creates data frame with all overlapping genes
+length(all_overlapping_genes$target_id) #71,960
+length(tidy_data$target_id) #1,363,959
+gonad.larvae<-tidy_data %>% select(target_id, gonad, larvae) %>% filter(gonad > 0, larvae >0) 
+length(gonad.larvae$target_id) #127,823
+gonad.larvae.juv_amb<-tidy_data %>% select(target_id, gonad, larvae, juv_amb) %>% filter(gonad > 0, larvae >0, juv_amb >0) 
+length(gonad.larvae.juv_amb$target_id) #102,450
+gonad.larvae.juv_amb.juv_sl<-tidy_data %>% select(target_id, gonad, larvae, juv_amb, juv_sl) %>% filter(gonad > 0, larvae >0, juv_amb >0, juv_sl > 0) 
+length(gonad.larvae.juv_amb.juv_sl$target_id) #91,736
+gonad.larvae.juv_amb.juv_sl.heart<-tidy_data %>% select(target_id, gonad, larvae, juv_amb, juv_sl, heart) %>% filter(gonad > 0, larvae >0, juv_amb >0, juv_sl > 0, heart>0) 
+length(gonad.larvae.juv_amb.juv_sl.heart$target_id) #78,755
+gonad.larvae.juv_amb.juv_sl.heart.ctenidia<-tidy_data %>% select(target_id, gonad, larvae, juv_amb, juv_sl, heart, ctenidia) %>% filter(gonad > 0, larvae >0, juv_amb >0, juv_sl > 0, heart>0, ctenidia > 0)
+length(gonad.larvae.juv_amb.juv_sl.heart.ctenidia$target_id) #71,960, agrees with all_overlapping_genes
+#####pulling gene lists from sorted columns
+nrow(tidy_data) #all genes
+nrow(distinct(tidy_data, tidy_data$juv_amb)) #318,959 distinct to juv_amb
+nrow(distinct(tidy_data, juv_amb, juv_sl)) #469,156 distinct to juveniles 
+juv_amb.only<-tidy_data %>% select(target_id, juv_amb) %>% filter (juv_amb > 0) %>% select(target_id)
+juv_sl.only<-tidy_data %>% select(target_id, juv_sl) 
+```
+
+# left_join identifiers to target_ids
+```{r}
+install.packages("vctrs")
+library(vctrs)
+library(dplyr)
+library(tidyr)
+library(tidyverse)
+#merging target_ids to count Matrix to get identifies for swissprot
+pgenerosa_complete<-countMatrix %>% 
+  left_join(blast_data, by=c("target_id"))
+
+pgenerosa_complete<-pgenerosa_complete %>% relocate(identifiers, .after = target_id)#move column
+pgenerosa_complete<-pgenerosa_complete[-c(9:18)]#remove extra columns
+pgenerosa_complete$identifiers<-sub("\\.\\d+$", "", pgenerosa_complete$identifiers)#remove extra decimal point for joining purposes
+```
+
+# Go to Uniprot website and grab all go terms
+[Uniprot Website](https://www.uniprot.org/uniprot/?query=*&fil=reviewed%3Ayes#)
+```{r}
+library(dplyr)
+#loaded into gannet and pulled down
+uniprot_all_reviewed<-read.csv(file="https://gannet.fish.washington.edu/gigas/uniprot-reviewed_yes.tab", sep='\t', header=TRUE)
+names(uniprot_all_reviewed)[1]<-"identifiers" #renamed
+pgenerosa_proteins<-left_join(pgenerosa_complete, uniprot_all_reviewed, by ="identifiers")
+```
+

@@ -1,0 +1,12 @@
+Assembly Accession	Assembly Name	Organism Name	Organism Infraspecific Names Breed	Organism Infraspecific Names Strain	Organism Infraspecific Names Cultivar	Organism Infraspecific Names Ecotype	Organism Infraspecific Names Isolate	Organism Infraspecific Names Sex	Annotation Name	Assembly Stats Total Sequence Length	Assembly Level	Assembly Submission Date	WGS project accession	Annotation Count Gene Total
+GCA_009026015.1	ASM902601v1	Ruditapes philippinarum					orange1			1123164463	Chromosome	10/15/19	QUSP01	
+GCA_012932295.1	ASM1293229v1	Cyclina sinensis					QG-2020	female		903119975	Scaffold	4/29/20	JAAONU01	
+GCA_014805675.2	ASM1480567v1.1	Mercenaria mercenaria					YKG-2019			1777616429	Chromosome	10/2/20	WTXZ01	
+GCA_014843695.1	ASM1484369v1	Archivesica marissinica					SY067_SCS001			1544610695	Chromosome	10/7/20	JABXNX01	
+GCA_021730395.1	MADL_Memer_1	Mercenaria mercenaria		notata						1858199728	Chromosome	2/1/22	JAIXLV01	
+GCA_025267735.1	ASM2526773v1	Mactra quadrangularis					QW-2022			979316952	Chromosome	9/25/22	JAMOLF01	
+GCA_026571515.1	ASM2657151v1	Ruditapes philippinarum					M1	male		1408186117	Contig	12/1/22	JAKTTH01	
+GCA_947247005.1	xbSpiSoli1.1	Spisula solida								932088914	Chromosome	10/30/22	CAMXUH01	
+GCA_947247015.1	xbSpiSoli1.1 alternate haplotype	Spisula solida								928906444	Scaffold	10/30/22	CAMXUG01	
+GCF_014805675.1	ASM1480567v1.1	Mercenaria mercenaria					YKG-2019		NCBI Annotation Release 100.20221206	1777616429	Chromosome	10/2/20	WTXZ01	43960
+GCF_021730395.1	MADL_Memer_1	Mercenaria mercenaria		notata					GCF_021730395.1-RS_2023_01	1858199728	Chromosome	2/1/22	JAIXLV01	45375

@@ -1,0 +1,1096 @@
+---
+title: "geoduck genome linked transcriptome"
+author: "Olivia Cattau"
+date: '2023-04-06'
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    theme: cosmo
+    highlight: pygments
+    number_sections:  true
+    fig_caption: true
+---
+
+https://rpubs.com/ocattau/1041480
+
+```{r ,echo=FALSE, warning=FALSE, message=FALSE, error=FALSE}
+library(tidyverse)
+library(stringr)
+library(UpSetR)
+library(devtools)
+#install_github("jokergoo/ComplexHeatmap")
+#if (!require("BiocManager", quietly = TRUE))
+    #install.packages("BiocManager")
+#BiocManager::install(version = "3.14")
+library(BiocManager)
+library(tidyr)
+library(UpSetR)
+library(ComplexHeatmap)
+library(tidyverse)
+library(magrittr) # needs to be run every time you start R and want to use %>%
+library(dplyr)   
+library(scales)
+library(unikn)
+library(knitr)
+library(data.table)
+library(plotly)
+library(gridExtra)
+```
+
+# LOAD DATA
+## load new genome linked transcriptome PGEN
+```{r, cache=TRUE}
+salmonMatrix<-read.csv(file="https://raw.githubusercontent.com/sr320/paper-geoduck-gene-exp/main/data/salmon.merged.gene_tpm.tsv", header=TRUE, sep = '\t')
+names(salmonMatrix)[1]<-"target_id"
+names(salmonMatrix)[2]<-"gene"
+data.table(salmonMatrix)
+#34,947
+```
+
+## load geoduck gene annotation file from 
+```{r, cache=TRUE}
+mappingMatrix<-read.csv(file="https://gannet.fish.washington.edu/Atumefaciens/20220419-pgen-gene_annotation_mapping/20220419-pgen-gene-accessions-gene_id-gene_name-gene_description-alt_gene_description-go_ids.tab", header=FALSE, sep = '\t', fill=TRUE)
+colnames(mappingMatrix) <- c("target_id", "identifiers", "gene_id", "gene_name", "annotation", "alt_annotation", "goterms")
+#14,672
+presence_count <- sum(!is.na(mappingMatrix[, 7]) & mappingMatrix[, 7] != "") #14,254
+```
+
+## load goslim mapping from Swiss Prott
+[link here](https://github.com/RobertsLab/code/tree/master/r_projects/sam/20230328-pgen-gene_annotation-update) 
+```{r, cache=TRUE}
+#double check to make sure this is reading the data correctly
+goslims<-read.csv(file="https://raw.githubusercontent.com/RobertsLab/code/master/r_projects/sam/20230328-pgen-gene_annotation-update/outputs/02-goslim-mapping/20230329-pgen-annotations-SwissProt-GO-BP_GOslim.tab", header=TRUE, sep = '\t')
+#14,672
+presence_count <- sum(!is.na(goslims[, 11]) & goslims[, 11] != "") #10,903
+```
+
+## download other transcriptome from clam species
+```{r, cache=TRUE}
+#from Mox blasting Manilla/Mercenaria on Pgen
+Manilla_Pgen<-read.table(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Manilla_Pgenenerosa_blastx.tab")
+```
+
+```{r ,echo=FALSE, cache=TRUE}
+Manila_Pgen_new <- separate(Manilla_Pgen, V2, into = c("gene", "Scaffold"), sep = "::")
+names(Manila_Pgen_new)[1]<-"Manila_gene"
+names(Manila_Pgen_new)[12]<-"e-value"
+# remove unnessisary data 
+Manila_Pgen_clean <- select(Manila_Pgen_new, -c(3:11, 13))
+
+#Manila_Pgen_new$accessions <- sub("\\.1$", "", Manila_Pgen_new$accessions)
+
+#761 shared genes
+
+#best Manila Transcriptome
+Pgen_Manila<-read.table(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_Manilla_db_blastx.tab")
+Pgen_Manila_new<- separate(Pgen_Manila, V1, into = c("gene", "Scaffold"), sep = "::") 
+names(Pgen_Manila_new)[3]<-"Manila_gene"
+names(Pgen_Manila_new)[12]<-"e-value"
+# remove unnessisary data 
+Pgen_Manila_clean <- select(Pgen_Manila_new, -c(2, 4:11, 13))
+#Pgen_Manila_new$accessions <-sub("\\.1$", "", Pgen_Manila_new$accessions)
+#657 shared genes
+
+Mercenaria_Pgen<-read.table(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Mercenaria_Pgenenerosa_blastx.tab")
+Mercenaria_Pgen_new<- separate(Mercenaria_Pgen, V2, into = c("gene", "Scaffold"), sep = "::") 
+names(Mercenaria_Pgen_new)[1]<-"Mercenaria_gene"
+names(Mercenaria_Pgen_new)[12]<-"e-value"
+# remove unnessisary data 
+Mercenaria_Pgen_clean <- select(Mercenaria_Pgen_new, -c(3:11, 13))
+#Mercenaria_Pgen_new$accessions <-sub("\\.1$", "", Mercenaria_Pgen_new$accessions)
+#Mercenaria_Pgen_new$accessions <-sub("\\.2$", "", Mercenaria_Pgen_new$accessions)
+#6,521 shared genes
+
+#best Mercenaria transcriptome
+Pgen_Mercenaria<-read.table(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_Mercenaria_db_blastx.tab")
+Pgen_Mercenaria_new<- separate(Pgen_Mercenaria, V1, into = c("gene", "Scaffold"), sep = "::") 
+names(Pgen_Mercenaria_new)[3]<-"Mercenaria_gene"
+names(Pgen_Mercenaria_new)[12]<-"e-value"
+Pgen_Mercenaria_clean <- select(Pgen_Mercenaria_new, -c(2, 4:11, 13))
+#Pgen_Mercenaria_new$accessions <-sub("\\.1$", "", Pgen_Mercenaria_new$accessions)
+#Pgen_Mercenaria_new$accessions <-sub("\\.2$", "", Pgen_Mercenaria_new$accessions)
+#5,099 shared 
+```
+
+## load genomes from blast output
+```{r, cache=TRUE}
+Mercenaria_genome<-read.csv(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_Mercenaria_db_genome_blastn.tab", sep = '\t', header = FALSE)
+
+Quadrangularis_genome<-read.csv(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_quadrangularis_db_genome_blastn.tab", sep = '\t', header = FALSE)
+
+Manila_genome<-read.csv(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_manila_db_genome_blastn.tab", sep = '\t', header = FALSE)
+
+Marissincia_genome<-read.csv(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Pgenerosa_marissinsa_db_genome_blastn.tab", sep = '\t', header = FALSE)
+
+Solida_genome<-read.csv(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/solida_db_genome_blastn.tab", sep = '\t', header = FALSE)
+
+kable(Solida_genome[1:10,1:5])
+```
+
+
+### get summary data for genomes
+```{r}
+#Mercenaria
+Mercenaria_new <- separate(Mercenaria_genome, V1, into = c("gene", "Scaffold"), sep = "::")
+names(Mercenaria_new)[1]<-"gene"
+names(Mercenaria_new)[12]<-"e-value"
+
+Mercenaria_summary <- Mercenaria_new %>%
+  mutate(Marissincia_genes = lapply(strsplit(as.character(V2), ";"), function(Marissincia_genes) paste0(unique(Marissincia_genes), collapse = ";"))) %>% 
+  distinct(Marissincia_genes, .keep_all = TRUE) 
+
+#Quadrangularis
+Quadrangularis_new <- separate(Quadrangularis_genome, V1, into = c("gene", "Scaffold"), sep = "::")
+names(Quadrangularis_new)[1]<-"gene"
+names(Quadrangularis_new)[12]<-"e-value"
+
+Quadrangularis_summary <- Quadrangularis_new %>%
+  mutate(genes = lapply(strsplit(as.character(V2), ";"), function(genes) paste0(unique(genes), collapse = ";"))) %>% 
+  distinct(genes, .keep_all = TRUE) 
+
+#Manila 
+Manila_new <- separate(Manila_genome, V1, into = c("gene", "Scaffold"), sep = "::")
+names(Manila_new)[1]<-"gene"
+names(Manila_new)[12]<-"e-value"
+
+Manila_summary <- Manila_new%>%
+  mutate(genes = lapply(strsplit(as.character(V2), ";"), function(genes) paste0(unique(genes), collapse = ";"))) %>% 
+  distinct(genes, .keep_all = TRUE) 
+
+#Marissincia
+Marissincia_new <- separate(Marissincia_genome, V1, into = c("gene", "Scaffold"), sep = "::")
+names(Marissincia_new)[1]<-"gene"
+names(Marissincia_new)[12]<-"e-value"
+
+Marissincia_summary <- Marissincia_new %>%
+  mutate(Marissincia_genes = lapply(strsplit(as.character(V2), ";"), function(Marissincia_genes) paste0(unique(Marissincia_genes), collapse = ";"))) %>% 
+  distinct(Marissincia_genes, .keep_all = TRUE) 
+
+#Solida
+Solida_new <- separate(Solida_genome, V1, into = c("gene", "Scaffold"), sep = "::")
+names(Solida_new)[1]<-"gene"
+names(Solida_new)[12]<-"e-value"
+
+Solida_summary <- Solida_new%>%
+  mutate(genes = lapply(strsplit(as.character(V2), ";"), function(genes) paste0(unique(genes), collapse = ";"))) %>% 
+  distinct(genes, .keep_all = TRUE) 
+```
+
+## make tables for clam genomes
+```{r}
+clam_genomes<-bind_rows(lst(Solida_new, Marissincia_new, Mercenaria_new, Manila_new, Quadrangularis_new), .id = "clam")
+kable(clam_genomes[1:5,1:5])
+```
+
+# JOIN DATA
+## combine all clams for scatterplot by e-value
+```{r, warning=FALSE, message=FALSE, error=FALSE}
+#all clam transcriptomes
+#Reminder: Merc->Pgen = 6521, Manila->Pgen = 761, Pgen -> Merc = 5,099, Pgen -> Manila = 657
+#always join large -> small
+compairative_clam_transcripts_right <- left_join(Mercenaria_Pgen_clean, Manila_Pgen_clean, by = "gene") 
+
+compairative_clam_transcripts_left <- left_join(Pgen_Mercenaria_clean, Pgen_Manila_clean, by = "gene") 
+```
+
+# join clam transcriptome with goslims
+```{r}
+Manila_Pgen_goslims <- Manila_Pgen_new %>%
+left_join(goslims, by=c("gene"))
+Pgen_Manila_goslims <- Pgen_Manila_new %>%
+  left_join(goslims, by=c("gene"))
+Mercenaria_Pgen_goslims<- Mercenaria_Pgen_new %>%
+left_join(goslims, by=c("gene")) #6521
+Pgen_Mercenaria_goslims<- Pgen_Mercenaria_new %>%
+left_join(goslims, by=c("gene")) #5099
+```
+
+# long format
+```{r}
+tidy_data<-salmonMatrix
+head(tidy_data)
+tidy_data_long<-tidy_data %>%
+  gather(key="tissue", value="tpm", ctenidia:larvae) #name key as time, name value as tpm, gather columns heart:larvae, converts wide to long format
+names(tidy_data_long)[2]<-"gene"
+head(tidy_data_long)
+tidy_data_long$binary=ifelse(tidy_data_long$tpm > 0, 1, 0)
+
+#add goslims below
+```
+
+# combine datasets into one gene annotation file
+```{r}
+pgenerosa_complete<-salmonMatrix %>% 
+  left_join(mappingMatrix, by=c("target_id")) 
+# could also do this with goslims
+pgenerosa_simple_goslims<-salmonMatrix %>% #best pgenerosa data set
+  left_join(goslims, by=c("gene"))
+pgenerosa_goslims<-pgenerosa_complete %>%
+  left_join(goslims, by=c("gene"))
+pgenerosa_long<-tidy_data_long %>% #best long pgenerosa data set
+  left_join(goslims, by=c("gene"))
+pgenerosa_goslims_long<-tidy_data_long %>%
+  left_join(pgenerosa_simple_goslims, by=c("gene"))
+kable(pgenerosa_simple_goslims[1:10, 1:10])
+```
+
+
+## break semi-colon in Term column and count unique values only
+### distinct goslims
+```{r}
+# check for duplicate values within each cell using strsplit() and anyDuplicated()
+duplicates <- sapply(strsplit(pgenerosa_simple_goslims$gene, ";"), anyDuplicated)
+
+# print the row indices of cells with duplicate values
+if (any(duplicates)) {
+  print(which(duplicates > 0))
+} else {
+  print("No duplicates found")
+}
+
+#accession numbers = no duplicates
+#gene_ID = no duplicates
+#allGoID duplicates = column 24458
+#BP_GO_ID duplicates = column 24458
+#CC_GO_ID duplicates = no duplicates
+#MF_GO_ID duplicates = columns 4561  8040 13044 16138
+#--------------------------------
+#GOslim duplicates lots and lots 
+#Terms duplicates lots and lots 
+
+#break cells and reform with unique values only
+distinct_goslims <- pgenerosa_simple_goslims %>%
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+  distinct(Term_unique, .keep_all = TRUE) %>%
+  mutate(GOslim_unique = lapply(strsplit(as.character(GOslim), ";"),function(GOslim_unique) paste0(unique(GOslim_unique), collapse = ";"))) %>% 
+  distinct(GOslim_unique, .keep_all = TRUE)
+
+kable(distinct_goslims[1:10,1:10])
+```
+
+# SPECIES
+## Separate the Term columb by semi-colons to count occurances for table
+```{r}
+# For Pgenerosa alone (wide format) 
+# Separate the "Term" column by semi-colons and count the occurrences
+term_count_Pgen <- distinct_goslims %>% #make sure you have removed duplicate values beforehand
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) # Count the occurrences and sort by descending count
+
+# Print the count of each term
+print(term_count_Pgen)
+
+# For Pgenerosa using pgenerosa_long (versus wide)
+# Separate the "Term" column by semi-colons and count the occurrences
+term_count_Pgen_long <- pgenerosa_long %>%  # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+  distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) # Count the occurrences and sort by descending count
+
+# Print the count of each term
+print(term_count_Pgen_long)
+#exactly the same as Pgen_wide
+
+
+#for Manila Clam
+# Separate the "Term" column by semi-colons and count the occurrences
+term_count_manila <- Manila_Pgen_goslims %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+  distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) # Count the occurrences and sort by descending count
+
+# Print the count of each term
+print(term_count_manila)
+
+# Manila Reverse
+term_count_manila_r <- Pgen_Manila_goslims %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+  distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) # Count the occurrences and sort by descending count
+
+# Print the count of each term
+print(term_count_manila_r)
+
+#for Mercenaria Clam
+# Separate the "Term" column by semi-colons and count the occurrences
+term_count_Mercenaria <- Mercenaria_Pgen_goslims %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+  distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) # Count the occurrences and sort by descending count
+
+# Print the count of each term
+print(term_count_Mercenaria)
+
+#for Mercenaria Clam reverse
+# Separate the "Term" column by semi-colons and count the occurrences
+term_count_Mercenaria_r <- Pgen_Mercenaria_goslims %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+  distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) # Count the occurrences and sort by descending count
+
+# Print the count of each term
+print(term_count_Mercenaria_r) #over 3x more terms than Mercenaria not reversed...wonder why that is....
+
+#combine all 5 datasets
+term_count_all <- bind_rows(term_count_Pgen, term_count_manila, term_count_manila_r, term_count_Mercenaria, term_count_Mercenaria_r, .id = "transcriptome") 
+
+term_count_best <- term_count_all %>% 
+  mutate(transcriptome = ifelse(transcriptome == 1, "Pgenerosa", 
+                    ifelse(transcriptome == 2, "Manila",
+                           ifelse(transcriptome == 3, "Manila_r", 
+                                  ifelse(transcriptome == 4, "Mercenaria", 
+                                         ifelse(transcriptome == 5, "Mercenaria_r", NA))))))
+
+```
+
+## NORMALIZE
+```{r}
+#normalize by Pgen transcriptome
+sum_terms<- term_count_Pgen %>% #count terms in n 
+  summarise(total_n = sum(n)) #17,611
+
+Pgen_normalized<- term_count_Pgen %>%
+  mutate(Pgen_normalized = n/17611)
+
+normal_counts<- term_count_best %>%
+  group_by(transcriptome) %>%
+  summarise(total_n = sum(n))
+#Pgen = 17,611
+#Manila = 1235
+#Manila_r = 1390
+#Mercenaria = 2198
+#Mercenaria_r = 7027
+
+
+filtered_data1 <- term_count_best %>%
+  filter(transcriptome %in% c("Mercenaria_r", "Manila", "Mercenaria", "Manila_r")) %>%
+  mutate(n_divided = case_when(
+                               transcriptome == "Manila" ~ n/1235,
+                               transcriptome == "Manila_r" ~ n/1390,
+                               transcriptome == "Mercenaria" ~ n/2198,
+                               transcriptome == "Mercenaria_r" ~ n/7027))
+
+grouped_data1<-left_join(filtered_data1, Pgen_normalized, by="Term_unique")
+
+species_normal<-grouped_data1 %>%
+  mutate(normalized = n_divided/Pgen_normalized)%>%
+  rename(n_species = n.x) %>%
+  rename(n_Pgen = n.y) %>%
+  mutate(log_scale = log(normalized))
+#for heatmap
+
+kable(species_normal[1:5,1:5])
+```
+
+## count GOterms unique to species
+```{r}
+#####make new variables with binary data
+
+#wide format data
+
+Manila_2<-Manila_Pgen_goslims %>%
+  select(-c(3:11, 13:23))
+
+Mercenaria_2<-Mercenaria_Pgen_goslims %>%
+   select(-c(3:11, 13:23))
+
+species_joined<-left_join(Mercenaria_2, Manila_2, by="gene")
+
+#Mercenaria
+species_joined$`e-value.x`=ifelse(species_joined$`e-value.x` > 0, 1, 0)
+#Manila
+species_joined$`e-value.y`=ifelse(species_joined$`e-value.y` > 0, 1, 0)
+
+species_matrix<-species_joined %>% select(gene, `e-value.x`, `e-value.y`) %>%
+  rename(Mercenaria_evalue = `e-value.x`)%>%
+  rename(Manila_evalue = `e-value.y`)%>%
+  distinct(gene, .keep_all = TRUE)%>%
+  mutate(Manila_evalue = ifelse(is.na(Manila_evalue), 0, Manila_evalue))%>%
+  mutate(Pgen_evalue = 1)
+
+species_matrix<-tibble::column_to_rownames(species_matrix, var="gene")
+
+species_matrix<-as.matrix(species_matrix) #count matrix for UpSet plots
+
+matrix_species = make_comb_mat(species_matrix, mode="distinct")
+matrix_species_intersect = make_comb_mat(species_matrix, mode="intersect")
+matrix_species_union = make_comb_mat(species_matrix, mode="union")
+set_size(matrix_species)
+comb_size(matrix_species)
+
+# create sample data frame
+species_count<- as.data.frame(species_matrix) %>%
+  mutate(Mercenaria_Manila = NA) %>%
+  mutate(Manila_Pgen = NA) %>%
+  mutate(Pgen_Mercenaria = NA) %>%
+  mutate(all=NA)%>%
+  mutate(Pgen= NA)
+
+# iterate through rows
+########################
+#Mercenaria_Manila does not include Pgen genome or else will return all zeros
+species_count$Mercenaria_Manila <-ifelse(species_count$Mercenaria_evalue ==1 & species_count$Manila_evalue == 1, 1, 0)
+
+#Manila + Pgenerosa
+species_count$Manila_Pgen <-ifelse(species_count$Mercenaria_evalue ==0 & species_count$Manila_evalue == 1 & species_count$Pgen_evalue == 1, 1, 0)
+
+#Mercenaria + Pgenerosa
+species_count$Pgen_Mercenaria <-ifelse(species_count$Mercenaria_evalue == 1 & species_count$Manila_evalue == 0 & species_count$Pgen_evalue == 1, 1, 0)
+
+#Mercenaria +Pgenerosa + Manila
+species_count$all<-ifelse(species_count$Mercenaria_evalue == 1 & species_count$Manila_evalue == 1 & species_count$Pgen_evalue == 1, 1, 0)
+
+#Pgen alone
+species_count$Pgen <-ifelse(species_count$Mercenaria_evalue == 0 & species_count$Manila_evalue == 0 & species_count$Pgen_evalue == 1, 1, 0)
+
+#return column names when species == 1
+# identify row indices where Pgen_Mercenaria column equals 1
+row_indices_a<- which(species_count$Mercenaria_Manila == 1)
+row_indices_b<- which(species_count$Manila_Pgen == 1)
+row_indices_c<- which(species_count$Pgen_Mercenaria == 1)
+row_indices_d<- which(species_count$all == 1)
+row_indices_e<- which(species_count$Pgen == 1)
+
+# extract corresponding row names
+genes_Mer_Man <- as.data.frame(rownames(species_count[row_indices_a, ])) 
+names(genes_Mer_Man)[1]<-"gene"
+
+genes_Man_Pgen <- as.data.frame(rownames(species_count[row_indices_b, ])) 
+names(genes_Man_Pgen)[1]<-"gene"
+
+genes_Mer_Pgen <- as.data.frame(rownames(species_count[row_indices_c, ])) 
+names(genes_Mer_Pgen)[1]<-"gene"
+
+genes_all <- as.data.frame(rownames(species_count[row_indices_d, ])) 
+names(genes_all)[1]<-"gene"
+
+genes_Pgen <- as.data.frame(rownames(species_count[row_indices_e, ])) 
+names(genes_Pgen)[1]<-"gene"
+
+#goslims
+goslims_genes_MM<-left_join(genes_Mer_Man, goslims, by="gene")
+goslims_gene_ManPgen<-left_join(genes_Man_Pgen, goslims, by ="gene")
+goslims_genes_MerPgen<-left_join(genes_Mer_Pgen, goslims, by="gene")
+goslims_genes_all<-left_join(genes_all, goslims, by="gene")
+goslims_genes_Pgen<-left_join(genes_Pgen, goslims, by="gene")
+
+#Unique GOterms only
+#Mercenaria + Manila
+MM_count_unique <- goslims_genes_MM %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+ # distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) %>% # Count the occurrences and sort by descending count 
+  mutate(count_unique = n()-1, species= "Mercenaria-Manila")
+
+Man_Pgen_count_unique <- goslims_gene_ManPgen %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+ # distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) %>% # Count the occurrences and sort by descending count 
+  mutate(count_unique = n()-1, species= "Manila-Pgen")
+
+Mer_Pgen_count_unique <- goslims_genes_MerPgen %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+ # distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) %>% # Count the occurrences and sort by descending count 
+  mutate(count_unique = n()-1, species= "Mercenaria-Pgen")
+
+all_count_unique <- goslims_genes_all %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+ # distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) %>% # Count the occurrences and sort by descending count 
+  mutate(count_unique = n()-1, species= "all-3")
+
+Pgen_count_unique <- goslims_genes_Pgen %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+ # distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) %>% # Count the occurrences and sort by descending count 
+  mutate(count_unique = n()-1, species= "Pgen_alone")
+
+species_unique<-bind_rows(Mer_Pgen_count_unique, Man_Pgen_count_unique, MM_count_unique, Pgen_count_unique, all_count_unique)
+
+kable(species_unique[1:4, 1:4])
+```
+
+# Oyster female gonad comparison
+## load data and filter for genebank accession numbers
+```{r}
+oyster_gonad<-read.csv(file="https://raw.githubusercontent.com/course-fish546-2023/olivia-geoduck/main/data/pone.0036353.s003.csv")
+
+oyster_gonad<- oyster_gonad %>%
+  filter(Description != 0) %>%
+  group_by(Cluster) %>%
+  select(Genebank, Cluster)
+
+#write.csv(oyster_gonad, file="/Users/oliviacattau/Documents/GitHub/olivia-geoduck/output/oyster_gonad_clusters.csv")
+
+kable(oyster_gonad[1:10, 1:2])
+```
+
+
+## load results from blast from genebank list of accession number above against Pgen *transcriptome*
+used Panopea-generosa-v2-db as transcriptome 
+```{r}
+cgigas_gonad_pgen<-read.csv(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/cgigas_gonad_pgen.tab", header=FALSE, sep = '\t')
+cgigas_gonad_pgen<- separate(cgigas_gonad_pgen, V2, into = c("Pgen_gene", "Scaffold"), sep = "::")
+names(cgigas_gonad_pgen)[1]<-"Cgigas_GeneBank"
+names(cgigas_gonad_pgen)[12]<-"e-value"
+
+#can add goslims, don't see the value right now (5.24.23)
+```
+
+
+# TISSUE
+## Count Goslims by tissue type
+```{r}
+#count top GOterms
+tissue_goslims <- pgenerosa_long %>%
+    group_by(tissue) %>% 
+  filter(binary == 1) %>%
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+  distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>%
+  separate_rows(Term_unique, sep = ";") %>%
+  mutate(Term_unique = trimws(Term_unique)) %>%
+  count(Term_unique, tissue, sort = TRUE)
+```
+
+# NORMALIZE
+## normalize goterm count by % in geoduck transcriptome by % tissue goterm counts by tissue transcriptome and return another % which is the normalized goterm count
+```{r}
+#add new column to variable term_count_Pgen
+
+#normalize data by % hit in Pgen transcriptome
+sum_terms<- term_count_Pgen %>% #count terms in n 
+  summarise(total_n = sum(n)) #17,611
+
+Pgen_normalized<- term_count_Pgen %>%
+  mutate(Pgen_normalized = n/17611)
+
+#normalize tissue data
+normal_counts<- tissue_goslims %>%
+  group_by(tissue) %>%
+  summarise(total_n = sum(n))
+#heart = 16,021
+#ctenidia = 15,911
+#gonad = 14,715
+#juv = 17,277
+#larvae = 16,632
+
+filtered_data <- tissue_goslims %>%
+  filter(tissue %in% c("ctenidia", "heart", "gonad", "larvae", "juvenile")) %>%
+  mutate(n_divided = case_when(tissue == "ctenidia" ~ n/15911,
+                               tissue == "heart" ~ n/16021,
+                               tissue == "gonad" ~ n/14715,
+                               tissue == "larvae" ~ n/16632,
+                               tissue == "juvenile" ~ n/17277))
+
+#combine Pgen_normalized with filtered_data and add new column normalized where tissue_n/geoduck_n to produce new normalized value
+
+grouped_data<-left_join(filtered_data, Pgen_normalized, by="Term_unique")
+
+Tis_normal<-grouped_data %>%
+  mutate(normalized = n_divided/Pgen_normalized)%>%
+  rename(n_tissue = n.x) %>%
+  rename(n_Pgen = n.y) %>%
+  mutate(log_scale = log(normalized))
+#for heatmap
+
+kable(Tis_normal[1:5, 1:5])
+```
+
+
+## filter by tissue type
+not actually unique goslims, only unique to tissue types
+```{r}
+tidy1<-pgenerosa_goslims_long %>%
+  group_by(tissue) %>%
+  filter(tpm > 0) 
+
+ctenidia<-pgenerosa_goslims %>%
+  filter(ctenidia > 0 & gonad == 0 & heart == 0 & juvenile == 0 & larvae == 0)
+count(ctenidia)
+#340 obs (unique to ctenidia)
+write.csv(ctenidia, file="/Users/oliviacattau/Documents/GitHub/code-for-Pgenerosa/output/ctenidia_unique.csv")
+
+gonad<-pgenerosa_goslims %>%
+  filter(gonad > 0 & ctenidia == 0 & heart == 0 & juvenile == 0 & larvae == 0)
+count(gonad)
+#119 obs (unique to gonad)
+write.csv(gonad, file="/Users/oliviacattau/Documents/GitHub/code-for-Pgenerosa/output/gonad_unique.csv")
+
+heart<-pgenerosa_goslims %>%
+  filter(heart > 0 & ctenidia == 0 & gonad == 0 & juvenile == 0 & larvae == 0)
+count(heart)
+#371 obs (unique to heart)
+write.csv(heart, file="/Users/oliviacattau/Documents/GitHub/code-for-Pgenerosa/output/heart_unique.csv")
+
+juvenile<-pgenerosa_goslims %>%
+  filter(juvenile > 0 & ctenidia == 0 & heart == 0 & gonad == 0 & larvae == 0)
+count(juvenile)
+#2,180 obs (unique to juvenile alone)
+write.csv(juvenile, file="/Users/oliviacattau/Documents/GitHub/code-for-Pgenerosa/output/juvenile_unique.csv")
+
+larvae<-pgenerosa_goslims %>%
+  filter(larvae > 0 & ctenidia == 0 & heart == 0 & gonad == 0 & juvenile == 0)
+count(larvae)
+#868 obs (unique to larvae alone)
+write.csv(larvae, file="/Users/oliviacattau/Documents/GitHub/code-for-Pgenerosa/output/larvae_unique.csv")
+
+juvorlarv<-pgenerosa_goslims %>%
+  filter(ctenidia == 0 & gonad == 0 & heart == 0) %>%
+  filter(juvenile > 0 & larvae > 0)
+#5,022 obs unique to both juveniles or larvae
+#1,974 obs unique to juveniles and larvae together
+
+all_unique<-pgenerosa_goslims %>%
+   filter(ctenidia > 0 & gonad > 0 & heart > 0 & juvenile > 0 & larvae > 0)
+```
+
+## count GOterms for individual tissues
+gonad
+larvae
+heart
+ctenidia
+juvenile
+```{r}
+gonad_count_unique <- gonad %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% # distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) %>% # Count the occurrences and sort by descending count 
+  mutate(count_unique = n()-1, tissue= "gonad")
+
+larvae_count_unique <- larvae %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% # distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) %>% # Count the occurrences and sort by descending count 
+  mutate(count_unique = n()-1, tissue= "larvae")
+
+heart_count_unique <- heart %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% # distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) %>% # Count the occurrences and sort by descending count 
+  mutate(count_unique = n()-1, tissue= "heart")
+
+ctenidia_count_unique <- ctenidia %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% # distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) %>% # Count the occurrences and sort by descending count 
+  mutate(count_unique = n()-1, tissue= "ctenidia")
+
+juvenile_count_unique <- juvenile %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% # distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) %>% # Count the occurrences and sort by descending count 
+  mutate(count_unique = n()-1, tissue= "juvenile")
+
+tissue_all_unique_genes_GOterms<-rbind(heart_count_unique, gonad_count_unique, ctenidia_count_unique, larvae_count_unique, juvenile_count_unique)
+
+kable(tissue_all_unique_genes_GOterms[1:4, 1:4])
+```
+
+# organize data for UpSet plot
+```{r}
+library(dplyr)
+#####make new variables with binary data
+tidy_data$heart=ifelse(tidy_data$heart > 0, 1, 0)
+tidy_data$gonad=ifelse(tidy_data$gonad >0, 1, 0)
+tidy_data$ctenidia=ifelse(tidy_data$ctenidia > 0, 1, 0)
+tidy_data$larvae=ifelse(tidy_data$larvae > 0, 1, 0)
+tidy_data$juvenile=ifelse(tidy_data$juvenile > 0, 1, 0)
+new_data<-tidy_data %>% select(target_id,heart, gonad, ctenidia, larvae, juvenile)
+new_data<-tibble::column_to_rownames(new_data, var="target_id")
+new_data<-as.matrix(new_data) #count matrix for UpSet plots
+```
+
+# Make UpSet plot for visualization of overlapping data: 
+[link to UpSet R page](https://jokergoo.github.io/ComplexHeatmap-reference/book/upset-plot.html#upset-mode)
+```{r}
+m1 = make_comb_mat(new_data) #only distinct intersections
+m2=make_comb_mat(new_data, mode="intersect")
+set_size(m1)
+comb_size(m1)
+comb_data<-as.data.frame(comb_size(m1))
+
+p1<-UpSet(m1 [comb_degree(m1)<=2], column_title ="All intersections of 2 or less") #intersections 2 or less
+p2<-UpSet(m1 [comb_degree(m1)>=3], column_title= "All intersection of 3 or more") #intersections 3 or more
+p3<-UpSet(m1, top_annotation = HeatmapAnnotation(
+    degree = as.character(comb_degree(m1)),
+    "Intersection\nsize" = anno_barplot(comb_size(m1), 
+        border = FALSE, 
+        gp = gpar(fill = "black"), 
+        height = unit(2, "cm")
+    ), 
+    annotation_name_side = "left", 
+    annotation_name_rot = 0), column_title="p. generosa transcriptome distinct intersections") #distinct mode
+
+p5<-UpSet(m2 [comb_degree(m2)<=2], column_title ="All intersections of 2 or less")
+p6<-UpSet(m2 [comb_degree(m2)>=3], column_title ="All intersections of 3 or more")
+#####testing comb_set sizes
+x2<-comb_size(m1)
+x3<-as.data.frame(x2)
+sum(x3$x2) #34,947 --distinct mode
+x4<-comb_size(m2)
+x5<-as.data.frame(x4)
+sum(x5$x4) #450,489 --intersect mode
+```
+
+# Make gene list for unique genes per tissue type
+```{r}
+# create sample data frame
+count_df<- as.data.frame(new_data) %>%
+  mutate(heart_gonad = NA) %>%
+  mutate(heart_ctenidia = NA) %>%
+  mutate(ctenidia_gonad = NA)
+
+
+# iterate through rows
+########################
+#heart + gonad
+# create a new column for shared data between heart and gonad columns
+count_df$heart_gonad <- ifelse(count_df$heart == 1 & count_df$gonad == 1 & count_df$ctenidia == 0 & count_df$juvenile == 0 & count_df$larvae == 0, 1, 0)
+
+#heart + ctenidia
+count_df$heart_ctenidia <- ifelse(count_df$heart == 1 & count_df$gonad == 0 & count_df$ctenidia == 1 & count_df$juvenile == 0 & count_df$larvae == 0, 1, 0) 
+
+#ctenidia + gonad
+count_df$ctenidia_gonad <- ifelse(count_df$heart == 0 & count_df$gonad == 1 & count_df$ctenidia == 1 & count_df$juvenile == 0 & count_df$larvae == 0, 1, 0) 
+
+#larvae + juvenile
+count_df$larv_juv <- ifelse(count_df$heart == 0 & count_df$gonad == 0 & count_df$ctenidia == 0 & count_df$juvenile == 1 & count_df$larvae == 1, 1, 0)
+
+#ctenidia + juvenile 
+count_df$ctenidia_juv <- ifelse(count_df$heart == 0 & count_df$gonad == 0 & count_df$ctenidia == 1 & count_df$juvenile == 1 & count_df$larvae == 0, 1, 0)
+
+#heart + juvenile
+count_df$heart_juv <- ifelse(count_df$heart == 1 & count_df$gonad == 0 & count_df$ctenidia == 0 & count_df$juvenile == 1 & count_df$larvae == 0, 1, 0)
+
+#gonad + juvenile
+count_df$gonad_juv <- ifelse(count_df$heart == 0 & count_df$gonad == 1 & count_df$ctenidia == 0 & count_df$juvenile == 1 & count_df$larvae == 0, 1, 0)
+
+#ctenidia + larvae
+count_df$larv_ctenidia <- ifelse(count_df$heart == 0 & count_df$gonad == 0 & count_df$ctenidia == 1 & count_df$juvenile == 0 & count_df$larvae == 1, 1, 0)
+
+#heart + larvae
+count_df$larv_heart <- ifelse(count_df$heart == 1 & count_df$gonad == 0 & count_df$ctenidia == 0 & count_df$juvenile == 0 & count_df$larvae == 1, 1, 0)
+
+#gonad + larvae
+count_df$larv_gonad <- ifelse(count_df$heart == 0 & count_df$gonad == 1 & count_df$ctenidia == 0 & count_df$juvenile == 0 & count_df$larvae == 1, 1, 0)
+
+#return column names when tissues == 1
+# identify row indices where heart_gonad column equals 1
+row_indices  <- which(count_df$heart_gonad == 1)
+row_indices_2<- which(count_df$heart_ctenidia == 1)
+row_indices_3<- which(count_df$ctenidia_gonad == 1)
+row_indices_4<- which(count_df$larv_juv == 1)
+row_indices_5<- which(count_df$ctenidia_juv == 1)
+row_indices_6<- which(count_df$heart_juv == 1)
+row_indices_7<- which(count_df$gonad_juv == 1)
+row_indices_8<- which(count_df$larv_ctenidia == 1)
+row_indices_9<- which(count_df$larv_heart == 1)
+row_indices_10<- which(count_df$larv_gonad == 1)
+
+
+# extract corresponding row names
+genes_heart_gonad <- as.data.frame(rownames(count_df[row_indices, ])) 
+names(genes_heart_gonad)[1]<-"gene"
+
+genes_heart_ctenidia <- as.data.frame(rownames(count_df[row_indices_2,]))
+names(genes_heart_ctenidia)[1]<-"gene"
+
+genes_ctenidia_gonad <- as.data.frame(rownames(count_df[row_indices_3, ])) 
+names(genes_ctenidia_gonad)[1]<-"gene"
+
+genes_larv_juv <- as.data.frame(rownames(count_df[row_indices_4, ])) 
+names(genes_larv_juv)[1]<-"gene"
+
+genes_ctenidia_juv <-as.data.frame(rownames(count_df[row_indices_5, ])) 
+names(genes_ctenidia_juv)[1]<-"gene"
+
+genes_heart_juv <- as.data.frame(rownames(count_df[row_indices_6, ])) 
+names(genes_heart_juv)[1]<-"gene"
+
+genes_gonad_juv <- as.data.frame(rownames(count_df[row_indices_7, ])) 
+names(genes_gonad_juv)[1]<-"gene"
+
+genes_larv_ctenidia <- as.data.frame(rownames(count_df[row_indices_8, ])) 
+names(genes_larv_ctenidia)[1]<-"gene"
+
+genes_larv_heart <- as.data.frame(rownames(count_df[row_indices_9, ])) 
+names(genes_larv_heart)[1]<-"gene"
+
+genes_larv_gonad <- as.data.frame(rownames(count_df[row_indices_10, ])) 
+names(genes_larv_gonad)[1]<-"gene"
+
+#goslims
+goslims_genes_hg<-left_join(genes_heart_gonad, goslims, by="gene")
+goslims_gene_hc<-left_join(genes_heart_ctenidia, goslims, by ="gene")
+goslims_genes_cg<-left_join(genes_ctenidia_gonad, goslims, by="gene")
+goslims_gene_lj<-left_join(genes_larv_juv, goslims, by="gene")
+goslims_genes_cj<-left_join(genes_ctenidia_juv, goslims, by="gene")
+goslims_genes_hj<-left_join(genes_heart_juv, goslims, by="gene")
+goslims_genes_gj<-left_join(genes_gonad_juv, goslims, by="gene")
+goslims_genes_cl<-left_join(genes_larv_ctenidia, goslims, by="gene")
+goslims_genes_hl<-left_join(genes_larv_heart, goslims, by="gene")
+goslims_genes_gl<-left_join(genes_larv_gonad, goslims, by="gene")
+
+
+#Unique GOterms only
+#heart-gonad
+hg_count_unique <- goslims_genes_hg %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+ # distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) %>% # Count the occurrences and sort by descending count 
+  mutate(count_unique = n()-1, tissues= "heart-gonad")
+
+#heart-ctenidia
+hc_count_unique <- goslims_gene_hc %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+  #distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) %>%# Count the occurrences and sort by descending count
+  mutate(count_unique = n()-1, tissues= "heart-ctenidia")
+
+#ctenidia-gonad
+cg_count_unique <- goslims_genes_cg %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+  #distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) %>% # Count the occurrences and sort by descending count 
+  mutate(count_unique = n()-1, tissues= "ctenidia-gonad")
+
+#larvae-juvenile
+lj_count_unique <- goslims_gene_lj %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+  #distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) %>% # Count the occurrences and sort by descending count 
+  mutate(count_unique = n()-1, tissues= "larvae-juvenile") #count genes with GOslims and remove 1 (for NAs)
+
+#ctenidia-juvenile
+cj_count_unique <- goslims_genes_cj %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+  #distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) %>% # Count the occurrences and sort by descending count 
+  mutate(count_unique = n()-1, tissues= "ctenidia-juvenile") #count genes with GOslims and remove 1 (for NAs)
+
+#heart-juvenile
+hj_count_unique <- goslims_genes_hj %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+  #distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) %>% # Count the occurrences and sort by descending count 
+  mutate(count_unique = n()-1, tissues= "heart-juvenile") #count genes with GOslims and remove 1 (for NAs)
+
+#gonad-juvenile
+gj_count_unique <- goslims_genes_gj %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+  #distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) %>% # Count the occurrences and sort by descending count 
+  mutate(count_unique = n()-1, tissues= "gonad-juvenile") #count genes with GOslims and remove 1 (for NAs)
+
+#heart + larvae
+hl_count_unique <- goslims_genes_hl %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+  #distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) %>% # Count the occurrences and sort by descending count 
+  mutate(count_unique = n()-1, tissues= "heart-larvae") #count genes with GOslims and remove 1 (for NAs)
+
+#ctenidia + larvae
+cl_count_unique <- goslims_genes_cl %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+  #distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) %>% # Count the occurrences and sort by descending count 
+  mutate(count_unique = n()-1, tissues= "ctenidia-larvae") #count genes with GOslims and remove 1 (for NAs)
+
+#gonad + larvae
+gl_count_unique <- goslims_genes_gl %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+  #distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) %>% # Count the occurrences and sort by descending count 
+  mutate(count_unique = n()-1, tissues= "gonad-larvae") #count genes with GOslims and remove 1 (for NAs)
+
+#term count Juv only
+juv_count_unique <- juvenile %>% # remove duplicates from Term column and create Term_unique column
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% 
+  #distinct(Term_unique, .keep_all = TRUE) %>% 
+  filter(!is.na(Term_unique)) %>% # Remove rows with missing (NA) values in the "Term" column
+  separate_rows(Term_unique, sep = ";") %>% # Separate the "Term" column by semi-colons
+  mutate(Term_unique = trimws(Term_unique)) %>% # Remove any leading/trailing white spaces 
+  count(Term_unique, sort = TRUE) %>% # Count the occurrences and sort by descending count 
+  mutate(count_unique = n()-1, tissues= "juvenile") #count genes with GOslims and remove 1 (for NAs)
+
+write.csv(juv_count_unique, file="/Users/oliviacattau/Documents/GitHub/olivia-geoduck/data/juv_count_unique.csv")
+
+#combine into one DF
+unique_overlapping_genes<-bind_rows(hg_count_unique, hc_count_unique, cg_count_unique, lj_count_unique, cj_count_unique, hj_count_unique, gj_count_unique, cl_count_unique, hl_count_unique, gl_count_unique)
+
+```
+
+# Make stacked bar-plot for visualizing Unique Terms
+```{r, fig.width=10, fig.height=8}
+#filter Terms down a bit 
+
+terms_filtered <- term_count_best %>%
+  group_by(Term_unique) %>%
+  filter(n() >= 5) %>%
+  filter(!is.na("Terms_unique")) %>%
+  filter(n >= 10)
+
+#load top 20 hits from Github
+top20terms<-read.csv(file="https://raw.githubusercontent.com/course-fish546-2023/olivia-geoduck/main/output/tables/top20terms.csv")
+
+compairative_transcriptomes<-top20terms %>%
+  filter(transcriptome != "Pgenerosa") %>%
+  filter(n >= 15)
+
+stacked_barplot<-ggplot(top20terms, aes(x=transcriptome, y=n, fill=Term_unique))+geom_bar(stat = "identity")+theme_bw()
+
+stacked_barplot2<-ggplot(compairative_transcriptomes, aes(x=transcriptome, y=n, fill=Term_unique))+geom_bar(stat = "identity")+theme_bw()
+
+stacked_barplot 
+```
+
+# Heatmaps 
+```{r, cache=TRUE}
+#Z=e-values, Y=Manilla genes, X=Mercenaria genes
+
+top20_long<-reshape(top20terms, idvar = "Term_unique", timevar = "transcriptome", direction = "wide")
+
+tissues_goterms_unique<-read.csv(file="https://raw.githubusercontent.com/ocattau/code-for-Pgenerosa/main/output/tissue_unique_Pgen_terms_heatmap_data.csv")
+
+tissues2<-tissues_goterms_unique %>%
+  filter(tissues != "larvae-juvenile")
+
+#heatmap<-ggplot(pgenerosa_long, aes(x=gene, y=tissue, fill=tpm)) + 
+ # geom_tile() #too large
+
+heatmap2<-ggplot(top20terms, aes(x=transcriptome, y=Term_unique, fill=n))+geom_tile()+theme_bw()+ scale_fill_gradient(low="#c2f9ff", high="#003460")
+
+heatmap3<-ggplot(compairative_transcriptomes, aes(x=transcriptome, y=Term_unique, fill=n))+geom_tile()+theme_bw() + scale_fill_gradient(low="#c2f9ff", high="#003460")
+
+heatmap7<- ggplot(tissues2, aes(x=tissues, y=Term_unique, fill=n, text=n))+geom_tile()+theme_bw()+ scale_fill_gradient(low="#c2f9ff", high="#003460")+theme(axis.text.x = element_text(angle = 45, hjust = 1) )
+
+Tis_normal_2<-Tis_normal %>%
+  filter(Term_unique != "NA")
+
+heatmap8<-ggplot(Tis_normal_2, aes(tissue, y=Term_unique, fill=normalized))+geom_tile()+theme_bw()+theme(axis.text.x = element_text(angle = 45, hjust = 1) )+ scale_fill_gradient2(low = "yellow", mid = "white", high = "red", midpoint = 0.9, na.value = "grey50")
+
+heatmap9<-ggplot(Tis_normal, aes(tissue, y=Term_unique, fill=log_scale))+geom_tile(color="white")+  scale_fill_gradient2(low = "red", mid = "white", high = "blue", midpoint = 0, na.value = "grey50")+theme_bw()+theme(axis.text.x = element_text(angle = 45, hjust = 1) )#need to set color wheel to white = 1 and red = min and blue = max
+
+species_normal_2<-species_normal %>%
+  filter(Term_unique != "NA")%>%
+  filter(transcriptome == "Manila_r" | transcriptome == "Mercenaria_r")
+
+heatmap10<-ggplot(species_normal_2, aes(transcriptome, y=Term_unique, fill=normalized))+geom_tile(color="white")+  scale_fill_gradient2(low = "red", mid = "white", high = "blue", midpoint = 1, na.value = "grey50")+theme_bw()+theme(axis.text.x = element_text(angle = 45, hjust = 1) )
+```
+
+
+```{r, fig.height=10, fig.width=8}
+ggplotly(heatmap7, tooltip="next")
+heatmap8
+heatmap9
+heatmap10
+```
+
+# pie charts
+Functional classification of P generosa contigs by RNA-Seq library
+```{r}
+# Filter out NA values in the column n.Pgenerosa
+na_zero <- replace(top20_long, is.na(top20_long), 0)
+
+# Plot the pie chart using the filtered data
+pie_geoduck<-ggplot(na_zero, aes(x="", y=n.Pgenerosa, fill=Term_unique))+geom_bar(stat="identity", width=1) +
+  coord_polar("y", start=0) +theme_void()
+
+#Plot the pie using base R
+pie_geoduck_R<-pie(na_zero$n.Pgenerosa, labels = na_zero$Term_unique, main="Geoduck gene library GoSlims", cex=0.3)
+
+
+```
+# scatter plots for e-values
+```{r, cache=TRUE}
+
+scatter<-ggplot(distinct_goslims, aes(x=gonad, y=juvenile))+geom_point()+theme_bw()
+
+scatter
+
+scatter2<-ggplot(distinct_goslims, aes(x=heart, y=juvenile))+geom_point()+theme_bw()
+
+scatter2
+
+#compairative_clam_transcripts_right
+
+scatter4<-ggplot(compairative_clam_transcripts_right, aes(x=`e-value.x`, y=`e-value.y`))+geom_point()+theme_bw()+xlab("Mercenaria")+ylab("Manila")+labs(title="Pgenerosa blast db")+ theme(plot.title = element_text(hjust = 0.5, margin = margin(b = 10)))#removed 3394 rows containing missing values
+
+scatter5<-ggplot(compairative_clam_transcripts_left, aes(x=`e-value.x`, y=`e-value.y`))+geom_point()+theme_bw()+xlab("Mercenaria")+ylab("Manila")+labs(title="Pgenerosa blast query")+ theme(plot.title = element_text(hjust = 0.5, margin = margin(b = 10)))#Removed 4686 rows containing missing values (`geom_point()`). 
+```
