@@ -49,14 +49,6 @@ data.table(salmonMatrix)
 #34,947
 ```
 
-## load geoduck gene annotation file from 
-```{r, cache=TRUE}
-mappingMatrix<-read.csv(file="https://gannet.fish.washington.edu/Atumefaciens/20220419-pgen-gene_annotation_mapping/20220419-pgen-gene-accessions-gene_id-gene_name-gene_description-alt_gene_description-go_ids.tab", header=FALSE, sep = '\t', fill=TRUE)
-colnames(mappingMatrix) <- c("target_id", "identifiers", "gene_id", "gene_name", "annotation", "alt_annotation", "goterms")
-#14,672
-presence_count <- sum(!is.na(mappingMatrix[, 7]) & mappingMatrix[, 7] != "") #14,254
-```
-
 ## load goslim mapping from Swiss Prott
 [link here](https://github.com/RobertsLab/code/tree/master/r_projects/sam/20230328-pgen-gene_annotation-update) 
 ```{r, cache=TRUE}
@@ -109,8 +101,6 @@ Pgen_Mercenaria_new<- separate(Pgen_Mercenaria, V1, into = c("gene", "Scaffold")
 names(Pgen_Mercenaria_new)[3]<-"Mercenaria_gene"
 names(Pgen_Mercenaria_new)[12]<-"e-value"
 Pgen_Mercenaria_clean <- select(Pgen_Mercenaria_new, -c(2, 4:11, 13))
-#Pgen_Mercenaria_new$accessions <-sub("\\.1$", "", Pgen_Mercenaria_new$accessions)
-#Pgen_Mercenaria_new$accessions <-sub("\\.2$", "", Pgen_Mercenaria_new$accessions)
 #5,099 shared 
 ```
 
@@ -223,8 +213,7 @@ tidy_data_long$binary=ifelse(tidy_data_long$tpm > 0, 1, 0)
 # combine datasets into one gene annotation file
 ```{r}
 pgenerosa_complete<-salmonMatrix %>% 
-  left_join(mappingMatrix, by=c("target_id")) 
-# could also do this with goslims
+  left_join(goslims, by=c("target_id")) 
 pgenerosa_simple_goslims<-salmonMatrix %>% #best pgenerosa data set
   left_join(goslims, by=c("gene"))
 pgenerosa_goslims<-pgenerosa_complete %>%
@@ -567,12 +556,22 @@ used Panopea-generosa-v2-db as transcriptome
 cgigas_gonad_pgen<-read.csv(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/cgigas_gonad_pgen.tab", header=FALSE, sep = '\t')
 cgigas_gonad_pgen<- separate(cgigas_gonad_pgen, V2, into = c("Pgen_gene", "Scaffold"), sep = "::")
 names(cgigas_gonad_pgen)[1]<-"Cgigas_GeneBank"
+names(cgigas_gonad_pgen)[2]<-"gene"
 names(cgigas_gonad_pgen)[12]<-"e-value"
 
-#can add goslims, don't see the value right now (5.24.23)
+gonad_genes<-left_join(cgigas_gonad_pgen, goslims, by="gene")
+head(gonad_genes)
 ```
 
-
+## Filter by genes present in female gonad
+return list of gonad genes in *C. gigas* and *P. generosa* 
+```{r}
+gonad_genes2<-gonad_genes %>%
+  filter(gonad_genes$`e-value` != 0)%>%
+  filter(!is.na(alt_gene_description))
+head(gonad_genes2) 
+```
+103 genes with gene descriptions 
 # TISSUE
 ## Count Goslims by tissue type
 ```{r}
