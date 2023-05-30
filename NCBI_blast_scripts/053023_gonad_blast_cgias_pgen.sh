@@ -20,8 +20,9 @@
 -query /gscratch/srlab/ocattau/clamdata/Dheilly.fasta \
 -db /gscratch/srlab/ocattau/clamdata/blastdb2/Panopea-generosa-v2-db \
 -out /gscratch/srlab/ocattau/clamdata/blast_output/cgigas_gonad_pgen.tab \
--evalue 1E-20 \
+-evalue 1E-10 \
 -num_threads 30 \
 -max_target_seqs 1 \
 -max_hsps 1 \
--outfmt 6
+-outfmt 6 \
+-task blastn

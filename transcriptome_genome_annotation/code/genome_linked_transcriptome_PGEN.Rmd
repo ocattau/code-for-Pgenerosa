@@ -540,11 +540,8 @@ kable(species_unique[1:4, 1:4])
 oyster_gonad<-read.csv(file="https://raw.githubusercontent.com/course-fish546-2023/olivia-geoduck/main/data/pone.0036353.s003.csv")
 
 oyster_gonad<- oyster_gonad %>%
-  filter(Description != 0) %>%
   group_by(Cluster) %>%
   select(Genebank, Cluster)
-
-#write.csv(oyster_gonad, file="/Users/oliviacattau/Documents/GitHub/olivia-geoduck/output/oyster_gonad_clusters.csv")
 
 kable(oyster_gonad[1:10, 1:2])
 ```
@@ -553,6 +550,7 @@ kable(oyster_gonad[1:10, 1:2])
 ## load results from blast from genebank list of accession number above against Pgen *transcriptome*
 used Panopea-generosa-v2-db as transcriptome 
 ```{r}
+#blast results = cgigas_gonad_pgen
 cgigas_gonad_pgen<-read.csv(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/cgigas_gonad_pgen.tab", header=FALSE, sep = '\t')
 cgigas_gonad_pgen<- separate(cgigas_gonad_pgen, V2, into = c("Pgen_gene", "Scaffold"), sep = "::")
 names(cgigas_gonad_pgen)[1]<-"Cgigas_GeneBank"
@@ -568,10 +566,16 @@ return list of gonad genes in *C. gigas* and *P. generosa*
 ```{r}
 gonad_genes2<-gonad_genes %>%
   filter(gonad_genes$`e-value` != 0)%>%
-  filter(!is.na(alt_gene_description))
+  filter(!is.na(alt_gene_description))%>%
+  left_join(gonad_genes2, cgigas_gonad_pgen, by="Cgigas_GeneBank")
+
 head(gonad_genes2) 
 ```
 103 genes with gene descriptions 
+
+### STATE HERE
+need to run blast again with Dheilly results
+
 # TISSUE
 ## Count Goslims by tissue type
 ```{r}
