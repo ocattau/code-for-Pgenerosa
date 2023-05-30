@@ -2,6 +2,8 @@
 BEST research report: 
 https://rpubs.com/ocattau/1046332
 
+Zenodo Release: https://doi.org/10.5281/zenodo.7987734
+
 ## Steps:
 
 1. Gather Pgenerosa Transcriptome and blast against NCBI swiss prot
