@@ -13,7 +13,27 @@ output:
     fig_caption: true
 ---
 
-https://rpubs.com/ocattau/1041480
+# Comparative Genomic and Proteomic Analysis of Geoduck clam (Panopea generosa)
+- Geoduck Genome already assembled in *Putnum et al. 2022*
+- Geoduck Transcritome -- genome linked transcriptome [link here](https://github.com/RobertsLab/code/tree/master/r_projects/sam/20230328-pgen-gene_annotation-update)
+- Comparative Transcriptome Analysis
+  1. gonad: reproductive genes
+  2. heart: circulatory genes
+  3. ctenidia: respiratory genes 
+- Reproductive Transcriptome Analysis
+  1. larvae
+  2. juvenile
+  3. *Dheilly et al. 2012* Pacific oyster reproductive genes (female gonad)
+- Comparative Species Transcriptome Analysis
+  1. Mercenaria mercenaria
+  2. Manila Clam (Ruditapes philippinarum)
+- Comparative Species Genome Analysis
+  1. Mercenaria mercenaria
+  2. Manila Clam (Ruditapes philippinarum)
+  3. Archivesica marissinica 
+  4. Spinsula solida
+  5. Mactra quadrangularis
+  
 
 ```{r ,echo=FALSE, warning=FALSE, message=FALSE, error=FALSE}
 library(tidyverse)
@@ -62,6 +82,7 @@ presence_count <- sum(!is.na(goslims[, 11]) & goslims[, 11] != "") #10,903
 ```{r, cache=TRUE}
 #from Mox blasting Manilla/Mercenaria on Pgen
 Manilla_Pgen<-read.table(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Manilla_Pgenenerosa_blastx.tab")
+Mercenaria_Pgen<-read.table(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Mercenaria_Pgenenerosa_blastx.tab")
 ```
 
 ```{r ,echo=FALSE, cache=TRUE}
@@ -212,11 +233,9 @@ tidy_data_long$binary=ifelse(tidy_data_long$tpm > 0, 1, 0)
 
 # combine datasets into one gene annotation file
 ```{r}
-pgenerosa_complete<-salmonMatrix %>% 
-  left_join(goslims, by=c("target_id")) 
 pgenerosa_simple_goslims<-salmonMatrix %>% #best pgenerosa data set
   left_join(goslims, by=c("gene"))
-pgenerosa_goslims<-pgenerosa_complete %>%
+pgenerosa_goslims<-salmonMatrix %>%
   left_join(goslims, by=c("gene"))
 pgenerosa_long<-tidy_data_long %>% #best long pgenerosa data set
   left_join(goslims, by=c("gene"))
@@ -535,46 +554,44 @@ kable(species_unique[1:4, 1:4])
 ```
 
 # Oyster female gonad comparison
-## load data and filter for genebank accession numbers
+## load data from Dheilly et al. 2012 from Supplemental Table 3 and filter for genebank accession numbers
 ```{r}
 oyster_gonad<-read.csv(file="https://raw.githubusercontent.com/course-fish546-2023/olivia-geoduck/main/data/pone.0036353.s003.csv")
+oyster_gonad_raw<-read.csv(file="https://raw.githubusercontent.com/course-fish546-2023/olivia-geoduck/main/data/pone.0036353.s003.csv")
 
 oyster_gonad<- oyster_gonad %>%
   group_by(Cluster) %>%
-  select(Genebank, Cluster)
+  select(Genebank, Cluster, Tissue.specificity, Description)
 
-kable(oyster_gonad[1:10, 1:2])
+kable(oyster_gonad[1:10, 1:4])
 ```
 
 
-## load results from blast from genebank list of accession number above against Pgen *transcriptome*
+## load results from BLASTn from Dheilly 2012 paper fasta against Pgen *transcriptome*
 used Panopea-generosa-v2-db as transcriptome 
 ```{r}
 #blast results = cgigas_gonad_pgen
 cgigas_gonad_pgen<-read.csv(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/cgigas_gonad_pgen.tab", header=FALSE, sep = '\t')
 cgigas_gonad_pgen<- separate(cgigas_gonad_pgen, V2, into = c("Pgen_gene", "Scaffold"), sep = "::")
-names(cgigas_gonad_pgen)[1]<-"Cgigas_GeneBank"
+names(cgigas_gonad_pgen)[1]<-"Genebank"
 names(cgigas_gonad_pgen)[2]<-"gene"
 names(cgigas_gonad_pgen)[12]<-"e-value"
 
-gonad_genes<-left_join(cgigas_gonad_pgen, goslims, by="gene")
-head(gonad_genes)
+gonad_genes<-left_join(cgigas_gonad_pgen, oyster_gonad, by="Genebank")
+kable(gonad_genes[1:10, 14:16])
 ```
 
 ## Filter by genes present in female gonad
 return list of gonad genes in *C. gigas* and *P. generosa* 
 ```{r}
-gonad_genes2<-gonad_genes %>%
-  filter(gonad_genes$`e-value` != 0)%>%
-  filter(!is.na(alt_gene_description))%>%
-  left_join(gonad_genes2, cgigas_gonad_pgen, by="Cgigas_GeneBank")
+gonad_genes<-gonad_genes %>%
+  filter(!is.na(Cluster)) %>%
+  filter(!is.na(Description))
 
-head(gonad_genes2) 
+kable(gonad_genes[1:10, 14:16])
+
+write.csv(gonad_genes, file="/Users/oliviacattau/Documents/GitHub/olivia-geoduck/output/tables/reproducive_genes.csv")
 ```
-103 genes with gene descriptions 
-
-### STATE HERE
-need to run blast again with Dheilly results
 
 # TISSUE
 ## Count Goslims by tissue type
@@ -632,7 +649,7 @@ Tis_normal<-grouped_data %>%
   mutate(log_scale = log(normalized))
 #for heatmap
 
-kable(Tis_normal[1:5, 1:5])
+kable(Tis_normal[1:5, 1:8])
 ```
 
 
@@ -780,6 +797,15 @@ x4<-comb_size(m2)
 x5<-as.data.frame(x4)
 sum(x5$x4) #450,489 --intersect mode
 ```
+
+# UPset Plots
+for looking at unique genes per RNA-seq tissue library 
+```{r, fig.width=8, fig.height=4}
+p1
+p2
+p3
+```
+
 
 # Make gene list for unique genes per tissue type
 ```{r}
@@ -1000,11 +1026,21 @@ unique_overlapping_genes<-bind_rows(hg_count_unique, hc_count_unique, cg_count_u
 ```
 
 # Make stacked bar-plot for visualizing Unique Terms
-```{r, fig.width=10, fig.height=8}
+```{r, cache=TRUE, }
 #filter Terms down a bit 
+species_normal_filtered<- species_normal%>%
+  group_by(Term_unique) %>%
+  filter(n_species >= 10) %>%
+  filter(!is.na("Terms_unique"))
 
 terms_filtered <- term_count_best %>%
-  group_by(Term_unique) %>%
+  filter(transcriptome == "Pgenerosa" | transcriptome == "Manila_r" | transcriptome == "Mercenaria_r") %>%
+  filter(n() >= 5) %>%
+  filter(!is.na("Terms_unique")) %>%
+  filter(n >= 10)
+
+terms_filtered2 <- term_count_best %>%
+  filter(transcriptome == "Manila_r" | transcriptome == "Mercenaria_r") %>%
   filter(n() >= 5) %>%
   filter(!is.na("Terms_unique")) %>%
   filter(n >= 10)
@@ -1017,18 +1053,29 @@ compairative_transcriptomes<-top20terms %>%
   filter(n >= 15)
 
 cols = rainbow(25, s=.6, v=.9)[sample(1:25,25)]
+cols2 = rainbow(69, s=.6, v=.9)[sample(1:69,69)]
 
-stacked_barplot<-ggplot(top20terms, aes(x=transcriptome, y=n, fill=Term_unique))+geom_bar(stat = "identity")+theme_bw()+scale_fill_manual(values=cols)
+stacked_barplot<-ggplot(top20terms, aes(x=transcriptome, y=n, fill=Term_unique))+geom_bar(stat = "identity")+theme_bw()+scale_fill_manual(values=cols)+theme(axis.text.x = element_text(angle = 45, hjust = 1, size=10, face="bold"))+theme(axis.text.y=element_text(size=10))+labs(fill="Biological GO Terms")
 
-stacked_barplot2<-ggplot(compairative_transcriptomes, aes(x=transcriptome, y=n, fill=Term_unique))+geom_bar(stat = "identity")+theme_bw()+scale_fill_manual(values=cols)
+stacked_barplot2<-ggplot(compairative_transcriptomes, aes(x=transcriptome, y=n, fill=Term_unique))+geom_bar(stat = "identity", position="fill")+theme_bw()+scale_fill_manual(values=cols)+theme(axis.text.x = element_text(angle = 45, hjust = 1, size=10, face="bold"))+theme(axis.text.y=element_text(size=10))+labs(fill="Biological GO Terms")
 
+stacked_barplot3<-ggplot(terms_filtered, aes(x=transcriptome, y=n, fill=Term_unique))+geom_bar(position="fill", stat = "identity")+theme_bw()+scale_fill_manual(values=cols2)+labs(x="Transcriptome")+labs(fill="Biological GO Terms")
+
+stacked_barplot4<-ggplot(terms_filtered, aes(x=Term_unique, y=n, fill=transcriptome))+geom_bar(position="stack", stat="identity")+theme_bw()+theme(axis.text.x = element_text(hjust = 1, size=10))+coord_flip()+labs(x="Biological GO Terms")+labs(fill="Transcriptome")
+
+stacked_barplot5<-ggplot(terms_filtered2, aes(x=Term_unique, y=n, fill=transcriptome))+geom_bar(position="stack", stat="identity")+theme_bw()+theme(axis.text.x = element_text (hjust = 1, size=10))+coord_flip()+labs(x="Biological GO Terms")+labs(fill="Transcriptome")
+```
+
+
+```{r, fig.height=10, fig.width=8}
 stacked_barplot 
 stacked_barplot2
-
+stacked_barplot4
+stacked_barplot5
 ```
 
 # Heatmaps 
-```{r, cache=TRUE}
+```{r, cache=TRUE, echo=FALSE}
 #Z=e-values, Y=Manilla genes, X=Mercenaria genes
 
 top20_long<-reshape(top20terms, idvar = "Term_unique", timevar = "transcriptome", direction = "wide")
@@ -1045,25 +1092,25 @@ heatmap2<-ggplot(top20terms, aes(x=transcriptome, y=Term_unique, fill=n))+geom_t
 
 heatmap3<-ggplot(compairative_transcriptomes, aes(x=transcriptome, y=Term_unique, fill=n))+geom_tile()+theme_bw() + scale_fill_gradient(low="#c2f9ff", high="#003460")
 
-heatmap7<- ggplot(tissues2, aes(x=tissues, y=Term_unique, fill=n, text=n))+geom_tile()+theme_bw()+ scale_fill_gradient(low="#c2f9ff", high="#003460")+theme(axis.text.x = element_text(angle = 45, hjust = 1) )
+heatmap7<- ggplot(tissues2, aes(x=tissues, y=Term_unique, fill=n, text=n))+geom_tile()+theme_bw()+ scale_fill_gradient2(low=("green"),mid="black", high=("red"), midpoint=17.5)+theme(axis.text.x = element_text(angle = 45, hjust = 1, size=10, face="bold"))+theme(axis.text.y=element_text(size=10))+labs(y="Biological GO Terms")
 
 Tis_normal_2<-Tis_normal %>%
   filter(Term_unique != "NA")
 
-heatmap8<-ggplot(Tis_normal_2, aes(tissue, y=Term_unique, fill=normalized))+geom_tile()+theme_bw()+theme(axis.text.x = element_text(angle = 45, hjust = 1) )+ scale_fill_gradient2(low = "yellow", mid = "white", high = "red", midpoint = 0.9, na.value = "grey50")
+heatmap8<-ggplot(Tis_normal_2, aes(tissue, y=Term_unique, fill=normalized))+geom_tile()+theme_bw()+ scale_fill_gradient2(low = "green", mid = "black", high = "red", midpoint = 0.92)+theme(axis.text.x = element_text(angle = 45, hjust = 1, size=10, face="bold"))+theme(axis.text.y=element_text(size=10))+labs(y="Biological GO Terms")
 
-heatmap9<-ggplot(Tis_normal, aes(tissue, y=Term_unique, fill=log_scale))+geom_tile(color="white")+  scale_fill_gradient2(low = "red", mid = "white", high = "blue", midpoint = 0, na.value = "grey50")+theme_bw()+theme(axis.text.x = element_text(angle = 45, hjust = 1) )#need to set color wheel to white = 1 and red = min and blue = max
+heatmap9<-ggplot(Tis_normal_2, aes(tissue, y=Term_unique, fill=log_scale))+ geom_tile()+theme_bw()+scale_fill_gradient2(low = "green", mid = "black", high = "red", midpoint = 0)+theme(axis.text.x = element_text(angle = 45, hjust = 1, size=10, face="bold"))+theme(axis.text.y=element_text(size=10))+labs(y="Biological GO Terms")
 
 species_normal_2<-species_normal %>%
   filter(Term_unique != "NA")%>%
   filter(transcriptome == "Manila_r" | transcriptome == "Mercenaria_r")
 
-heatmap10<-ggplot(species_normal_2, aes(transcriptome, y=Term_unique, fill=normalized))+geom_tile(color="white")+  scale_fill_gradient2(low = "red", mid = "white", high = "blue", midpoint = 1, na.value = "grey50")+theme_bw()+theme(axis.text.x = element_text(angle = 45, hjust = 1) )
+heatmap10<-ggplot(species_normal_2, aes(transcriptome, y=Term_unique, fill=log(normalized)))+geom_tile()+scale_fill_gradient2(low = "green", mid = "black", high = "red", midpoint = 0, na.value = "grey50")+theme_bw()+labs(y="Biological GO Terms")+theme(axis.text.x = element_text(angle = 45, hjust = 1, size=10, face="bold"))+theme(axis.text.y=element_text(size=10))
 ```
 
 
 ```{r, fig.height=10, fig.width=8}
-ggplotly(heatmap7, tooltip="next")
+heatmap7
 heatmap8
 heatmap9
 heatmap10
@@ -1071,19 +1118,20 @@ heatmap10
 
 # pie charts
 Functional classification of P generosa contigs by RNA-Seq library
-```{r, fig.width=10, fig.height=10}
+```{r, fig.width=15, fig.height=10}
 # Filter out NA values in the column n.Pgenerosa
 na_zero <- replace(top20_long, is.na(top20_long), 0)
 
 # Plot the pie chart using the filtered data
 pie_geoduck<-ggplot(na_zero, aes(x="", y=n.Pgenerosa, fill=Term_unique))+geom_bar(stat="identity", width=1) +
-  coord_polar("y", start=0) +theme_void()
+  coord_polar("y", start=0) +theme_void() #do not like the rainbow
 
-#Plot the pie using base R
-pie_geoduck_R<-pie(na_zero$n.Pgenerosa, labels = na_zero$Term_unique, main="Geoduck gene library GoSlims")
+#Plot the pie using base R: not a very good plot
+pie_geoduck_R<-pie(na_zero$n.Pgenerosa, labels = na_zero$Term_unique, main="Geoduck Gene Library w/ Biological GO Terms")
 ```
-# scatter plots for e-values
-```{r, cache=TRUE}
+
+
+```{r, eval=FALSE, echo=FALSE}
 
 scatter<-ggplot(distinct_goslims, aes(x=gonad, y=juvenile))+geom_point()+theme_bw()
 
