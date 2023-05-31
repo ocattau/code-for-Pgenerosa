@@ -591,6 +591,12 @@ gonad_genes<-gonad_genes %>%
 kable(gonad_genes[1:10, 14:16])
 
 write.csv(gonad_genes, file="/Users/oliviacattau/Documents/GitHub/olivia-geoduck/output/tables/reproducive_genes.csv")
+
+gonad_list <- gonad_genes %>%
+  group_by(Cluster) %>%
+  count(Cluster, sort = TRUE)
+
+kable(gonad_list[1:10, 1:2])
 ```
 
 # TISSUE
