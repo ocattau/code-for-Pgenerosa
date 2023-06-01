@@ -13,7 +13,11 @@ output:
     fig_caption: true
 ---
 
+Zenodo release: [![DOI](https://zenodo.org/badge/424326872.svg)](https://zenodo.org/badge/latestdoi/424326872)
+
+
 # Comparative Genomic and Proteomic Analysis of Geoduck clam (Panopea generosa)
+
 - Geoduck Genome already assembled in *Putnum et al. 2022*
 - Geoduck Transcritome -- genome linked transcriptome [link here](https://github.com/RobertsLab/code/tree/master/r_projects/sam/20230328-pgen-gene_annotation-update)
 - Comparative Transcriptome Analysis
@@ -33,7 +37,6 @@ output:
   3. Archivesica marissinica 
   4. Spinsula solida
   5. Mactra quadrangularis
-  
 
 ```{r ,echo=FALSE, warning=FALSE, message=FALSE, error=FALSE}
 library(tidyverse)
@@ -595,26 +598,16 @@ gonad_genes<-left_join(gonad_genes, goslims, by="gene")
 gonad_genes4 <- gonad_genes %>%
   mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% mutate(GOslim_unique = lapply(strsplit(as.character(GOslim), ";"),function(GOslim_unique) paste0(unique(GOslim_unique), collapse = ";")))
 
-# Convert list elements to appropriate data types
-gonad_genes_clean <- lapply(gonad_genes4, function(x) {
-  if (is.list(x)) {
-    unlist(x)
-  } else {
-    x
-  }
-})
+library(dplyr)
+library(stringr)
 
-# Convert to data frame
-gonad_genes_df <- as.data.frame(gonad_genes_clean)
+gonad_genes4 <- gonad_genes %>%
+  mutate(Term_unique = sapply(strsplit(as.character(Term), ";"), function(x) str_c(unique(x), collapse = ";")),
+         GOslim_unique = sapply(strsplit(as.character(GOslim), ";"), function(x) str_c(unique(x), collapse = ";")))
 
-# Save as TSV file
-write.table(gonad_genes_df, file = "/Users/oliviacattau/Documents/GitHub/olivia-geoduck/output/tables/reproductive_genes.tsv", sep = "\t", quote = FALSE, row.names = FALSE)
+write.csv(gonad_genes, file = "/Users/oliviacattau/Documents/GitHub/olivia-geoduck/output/tables/reproductive_genes.csv")
 
-
-# Save the data frame as a TSV file
-write.table(gonad_genes4, file = "/Users/oliviacattau/Documents/GitHub/olivia-geoduck/output/tables/reproductive_genes.tsv", sep = "\t", quote = FALSE, row.names = FALSE)
-
-
+write.csv(gonad_genes4, file = "/Users/oliviacattau/Documents/GitHub/olivia-geoduck/output/tables/reproductive_genes2.csv")
 
 gonad_list <- gonad_genes %>%
   group_by(Cluster) %>%
@@ -1160,8 +1153,9 @@ pie_geoduck<-ggplot(na_zero, aes(x="", y=n.Pgenerosa, fill=Term_unique))+geom_ba
 pie_geoduck_R<-pie(na_zero$n.Pgenerosa, labels = na_zero$Term_unique, main="Geoduck Gene Library w/ Biological GO Terms")
 ```
 
-
-```{r, eval=FALSE, echo=FALSE}
+# Next Steps 
+gather e-value data from Genomes and make scatter plots with individual RNA-seq libraries
+```{r}
 
 scatter<-ggplot(distinct_goslims, aes(x=gonad, y=juvenile))+geom_point()+theme_bw()
 
@@ -1177,3 +1171,4 @@ scatter4<-ggplot(compairative_clam_transcripts_right, aes(x=`e-value.x`, y=`e-va
 
 scatter5<-ggplot(compairative_clam_transcripts_left, aes(x=`e-value.x`, y=`e-value.y`))+geom_point()+theme_bw()+xlab("Mercenaria")+ylab("Manila")+labs(title="Pgenerosa blast query")+ theme(plot.title = element_text(hjust = 0.5, margin = margin(b = 10)))#Removed 4686 rows containing missing values (`geom_point()`). 
 ```
+
