@@ -106,6 +106,7 @@ Pgen_Manila_clean <- select(Pgen_Manila_new, -c(2, 4:11, 13))
 #Pgen_Manila_new$accessions <-sub("\\.1$", "", Pgen_Manila_new$accessions)
 #657 shared genes
 
+
 Mercenaria_Pgen<-read.table(file="https://gannet.fish.washington.edu/gigas/data/p.generosa/Mercenaria_Pgenenerosa_blastx.tab")
 Mercenaria_Pgen_new<- separate(Mercenaria_Pgen, V2, into = c("gene", "Scaffold"), sep = "::") 
 names(Mercenaria_Pgen_new)[1]<-"Mercenaria_gene"
@@ -585,12 +586,35 @@ kable(gonad_genes[1:10, 14:16])
 return list of gonad genes in *C. gigas* and *P. generosa* 
 ```{r}
 gonad_genes<-gonad_genes %>%
-  filter(!is.na(Cluster)) %>%
-  filter(!is.na(Description))
+  filter(!is.na(Cluster)) 
 
 kable(gonad_genes[1:10, 14:16])
 
-write.csv(gonad_genes, file="/Users/oliviacattau/Documents/GitHub/olivia-geoduck/output/tables/reproducive_genes.csv")
+gonad_genes<-left_join(gonad_genes, goslims, by="gene")
+
+gonad_genes4 <- gonad_genes %>%
+  mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% mutate(GOslim_unique = lapply(strsplit(as.character(GOslim), ";"),function(GOslim_unique) paste0(unique(GOslim_unique), collapse = ";")))
+
+# Convert list elements to appropriate data types
+gonad_genes_clean <- lapply(gonad_genes4, function(x) {
+  if (is.list(x)) {
+    unlist(x)
+  } else {
+    x
+  }
+})
+
+# Convert to data frame
+gonad_genes_df <- as.data.frame(gonad_genes_clean)
+
+# Save as TSV file
+write.table(gonad_genes_df, file = "/Users/oliviacattau/Documents/GitHub/olivia-geoduck/output/tables/reproductive_genes.tsv", sep = "\t", quote = FALSE, row.names = FALSE)
+
+
+# Save the data frame as a TSV file
+write.table(gonad_genes4, file = "/Users/oliviacattau/Documents/GitHub/olivia-geoduck/output/tables/reproductive_genes.tsv", sep = "\t", quote = FALSE, row.names = FALSE)
+
+
 
 gonad_list <- gonad_genes %>%
   group_by(Cluster) %>%
