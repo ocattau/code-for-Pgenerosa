@@ -246,6 +246,8 @@ pgenerosa_long<-tidy_data_long %>% #best long pgenerosa data set
 pgenerosa_goslims_long<-tidy_data_long %>%
   left_join(pgenerosa_simple_goslims, by=c("gene"))
 kable(pgenerosa_simple_goslims[1:10, 1:10])
+
+#write.csv(pgenerosa_simple_goslims, file="/Users/oliviacattau/Documents/GitHub/olivia-geoduck/output/MASTERgenelistPGEN.csv")
 ```
 
 
@@ -598,16 +600,13 @@ gonad_genes<-left_join(gonad_genes, goslims, by="gene")
 gonad_genes4 <- gonad_genes %>%
   mutate(Term_unique = lapply(strsplit(as.character(Term), ";"), function(Term_unique) paste0(unique(Term_unique), collapse = ";"))) %>% mutate(GOslim_unique = lapply(strsplit(as.character(GOslim), ";"),function(GOslim_unique) paste0(unique(GOslim_unique), collapse = ";")))
 
-library(dplyr)
-library(stringr)
-
 gonad_genes4 <- gonad_genes %>%
   mutate(Term_unique = sapply(strsplit(as.character(Term), ";"), function(x) str_c(unique(x), collapse = ";")),
          GOslim_unique = sapply(strsplit(as.character(GOslim), ";"), function(x) str_c(unique(x), collapse = ";")))
 
-write.csv(gonad_genes, file = "/Users/oliviacattau/Documents/GitHub/olivia-geoduck/output/tables/reproductive_genes.csv")
+#write.csv(gonad_genes, file = "/Users/oliviacattau/Documents/GitHub/olivia-geoduck/output/tables/reproductive_genes.csv")
 
-write.csv(gonad_genes4, file = "/Users/oliviacattau/Documents/GitHub/olivia-geoduck/output/tables/reproductive_genes2.csv")
+#write.csv(gonad_genes4, file = "/Users/oliviacattau/Documents/GitHub/olivia-geoduck/output/tables/reproductive_genes2.csv")
 
 gonad_list <- gonad_genes %>%
   group_by(Cluster) %>%
@@ -615,6 +614,23 @@ gonad_list <- gonad_genes %>%
 
 kable(gonad_list[1:10, 1:2])
 ```
+
+
+# Reproductive genes by gonad
+```{r}
+gonad_reproductive<-pgenerosa_long %>%
+ filter(tissue=="gonad")%>%
+  filter(binary==1) 
+  
+
+result <- grep("reproductive", gonad_reproductive$Term, ignore.case = TRUE)
+
+matching_rows <- gonad_reproductive[row.names(gonad_reproductive) %in% result, ]
+  
+#write.csv(matching_rows, file="/Users/oliviacattau/Documents/GitHub/olivia-geoduck/output/gonad_reproductive_Genelist.csv")
+kable(matching_rows)
+```
+
 
 # TISSUE
 ## Count Goslims by tissue type
