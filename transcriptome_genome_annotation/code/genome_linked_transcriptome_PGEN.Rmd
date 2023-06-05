@@ -1138,6 +1138,8 @@ Tis_normal_2<-Tis_normal %>%
 
 heatmap8<-ggplot(Tis_normal_2, aes(tissue, y=Term_unique, fill=normalized))+geom_tile()+theme_bw()+ scale_fill_gradient2(low = "green", mid = "black", high = "red", midpoint = 0.92)+theme(axis.text.x = element_text(angle = 45, hjust = 1, size=10, face="bold"))+theme(axis.text.y=element_text(size=10))+labs(y="Biological GO Terms")
 
+heatmap8b<-ggplot(Tis_normal_2, aes(x=Term_unique, y=tissue, fill=normalized))+geom_tile()+theme_bw()+ scale_fill_gradient2(low = "green", mid = "black", high = "red", midpoint = 0.92)+theme(axis.text.x = element_text(angle = 75, hjust = 1, size=10, face="bold"))+theme(axis.text.y=element_text(size=10))+labs(y="Biological GO Terms")
+
 heatmap9<-ggplot(Tis_normal_2, aes(tissue, y=Term_unique, fill=log_scale))+ geom_tile()+theme_bw()+scale_fill_gradient2(low = "green", mid = "black", high = "red", midpoint = 0)+theme(axis.text.x = element_text(angle = 45, hjust = 1, size=10, face="bold"))+theme(axis.text.y=element_text(size=10))+labs(y="Biological GO Terms")
 
 species_normal_2<-species_normal %>%
