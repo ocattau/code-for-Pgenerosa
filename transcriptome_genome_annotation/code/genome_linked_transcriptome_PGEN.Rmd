@@ -1181,9 +1181,11 @@ genome_sizes$X <- NULL
 
 genome_sizes<-genome_sizes[-c(6),]
 
-genome_sizes$species <- factor(genome_sizes$species, levels=unique(genome_sizes$species))
+genome_sizes_ranked<-genome_sizes %>% 
+  arrange(desc(size))
 
-genome_sizes_bar<-ggplot(data=genome_sizes, aes(x=species, y=size))+geom_bar(stat="identity", fill="#A4A4A4", color="black")+theme_bw()+theme(axis.text.x = element_text(angle = 45, hjust = 1, size=10, face="italic"))+theme(axis.text.y=element_text(size=10))+ylab("Percent Coverage of P. generosa Transcriptome")
+genome_sizes_bar<-ggplot(data=genome_sizes_ranked, aes(x=species, y=size))+geom_bar(stat="identity", fill="#A4A4A4", color="black")+theme_bw()+theme(axis.text.x = element_text(angle = 45, hjust = 1, size=10, face="italic"))+theme(axis.text.y=element_text(size=10))+ylab("Percent Coverage of P. generosa Gene List")+geom_text(aes(label = size), vjust = -0.3)+
+  scale_x_discrete(limits=genome_sizes_ranked$species)
 ```
 
 # Next Steps 
