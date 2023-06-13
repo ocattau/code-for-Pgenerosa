@@ -1162,13 +1162,28 @@ Functional classification of P generosa contigs by RNA-Seq library
 ```{r, fig.width=15, fig.height=10}
 # Filter out NA values in the column n.Pgenerosa
 na_zero <- replace(top20_long, is.na(top20_long), 0)
+gonad_count_pie<-gonad_count_unique[-1,]
+na_zero2<-na_zero[1:20,]
 
 # Plot the pie chart using the filtered data
 pie_geoduck<-ggplot(na_zero, aes(x="", y=n.Pgenerosa, fill=Term_unique))+geom_bar(stat="identity", width=1) +
   coord_polar("y", start=0) +theme_void() #do not like the rainbow
 
 #Plot the pie using base R: not a very good plot
-pie_geoduck_R<-pie(na_zero$n.Pgenerosa, labels = na_zero$Term_unique, main="Geoduck Gene Library w/ Biological GO Terms")
+pie_geoduck_R<-pie(na_zero2$n.Pgenerosa, labels = na_zero2$Term_unique, main="Geoduck Gene Library w/ Biological GO Terms")
+
+pie_geoduck_gonad<-pie(gonad_count_pie$n, labels=gonad_count_pie$Term_unique, main="Geoduck gonad RNA-seq library",cex = 2)
+
+genome_sizes<-read.csv(file="/Users/oliviacattau/Documents/GitHub/olivia-geoduck/data/genome_size.csv")
+
+# Remove a column
+genome_sizes$X <- NULL
+
+genome_sizes<-genome_sizes[-c(6),]
+
+genome_sizes$species <- factor(genome_sizes$species, levels=unique(genome_sizes$species))
+
+genome_sizes_bar<-ggplot(data=genome_sizes, aes(x=species, y=size))+geom_bar(stat="identity", fill="#A4A4A4", color="black")+theme_bw()+theme(axis.text.x = element_text(angle = 45, hjust = 1, size=10, face="italic"))+theme(axis.text.y=element_text(size=10))+ylab("Percent Coverage of P. generosa Transcriptome")
 ```
 
 # Next Steps 
