@@ -2,7 +2,7 @@
 BEST research report: 
 https://rpubs.com/ocattau/1046332
 
-Zenodo Release: https://doi.org/10.5281/zenodo.7987734
+Zenodo Release:[![DOI](https://zenodo.org/badge/424326872.svg)](https://zenodo.org/badge/latestdoi/424326872)
 
 Clean GitHub repo for publication: https://github.com/course-fish546-2023/olivia-geoduck/tree/main
 
